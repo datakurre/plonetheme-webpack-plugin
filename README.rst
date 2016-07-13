@@ -68,7 +68,7 @@ with the following minimal ``webpack.config.js``:
     }
     console.log(module.exports);
 
-0. This example expects a Plone theme source at ``-/src/mytheme`` and it
+0. This example expects a Plone theme source at ``./src/mytheme`` and it
    builds a complete theme into ``./theme/mytheme``.
 
 1. At first, PloneWebpackPlugin is initialized with the address for
