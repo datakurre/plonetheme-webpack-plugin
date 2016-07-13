@@ -100,11 +100,12 @@ following ``package.json`` example:
       "devDependencies": {
         "css-loader": "^0.14.5",
         "exports-loader": "^0.6.3",
+        "expose-loader": "^0.7.1",
         "file-loader": "^0.9.0",
         "imports-loader": "^0.6.5",
         "less": "^2.7.1",
         "less-loader": "^2.2.3",
-        "plonetheme-webpack-plugin": "^0.0.2",
+        "plonetheme-webpack-plugin": "^0.0.4",
         "style-loader": "^0.13.1",
         "text-loader": "0.0.1",
         "url-loader": "^0.5.7",

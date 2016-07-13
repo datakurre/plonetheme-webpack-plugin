@@ -58,12 +58,12 @@ function PloneWebpackPlugin(options) {
 
   // Pre-configure loaders
   this.loaders = {
-     
+
     url: {
       test: /\.(png|gif|otf|eot|svg|ttf|woff|woff2)(\?.*)?$/,
       loader: 'url', query: {limit: 8192}
     },
-     
+
     extract: {
       less: {
         test: /\.less$/,
@@ -72,46 +72,51 @@ function PloneWebpackPlugin(options) {
         ])
       }
     },
-     
+
     less: {
       test: /\.less$/,
       loaders: [
         'style', 'css',  q('less', { globalVars: less.globalVars })
       ]
     },
-     
+
     shim: {
 
       ace: {
         test: /mockup\/texteditor\/pattern'/,
         loader: 'imports?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini'
       },
-       
+
       backbone: {
         test: /backbone\.paginator/,
         loader: 'imports?_=underscore,Backbone=backbone'
       },
-       
+
+      jquery: {
+        test: /components\/jquery/,
+        loader: 'expose?$!expose?jQuery'
+      },
+
       jqtree: {
         test: /jqtree/,
         loader: 'imports?$=jquery,this=>{jQuery:$}'
       },
-       
+
       recurrenceinput: {
         test: /jquery\.recurrenceinput/,
         loader: 'imports?tmpl=jquery.tmpl'
       },
-       
+
       tinymce: {
         test: /tinymce$/,
         loader: 'imports?document=>window.document,this=>window!exports?window.tinymce'
       },
-       
+
       tinymceplugins: {
         test: /tinymce\/plugins/,
         loader: 'imports?tinymce,this=>{tinymce:tinymce}'
       },
-       
+
       jqueryeventdrop: {
         test: /jquery\.event\.drop/,
         loader: 'exports?$.drop'
@@ -126,44 +131,44 @@ function PloneWebpackPlugin(options) {
         test: /PloneFormGen.*quickedit\.js$/,
         loader: 'imports?requirejs=>define,_tabs=jquerytools.tabs'
       }
-       
+
     }
   };
 
   // Pre-configure plugins
   this.plugins = {
-    
+
     plone: this,
-     
+
     hrm: new webpack.HotModuleReplacementPlugin(),
-     
+
     extract: new ExtractTextPlugin('[name].[chunkhash].css'),
-     
+
     uglify: new webpack.optimize.UglifyJsPlugin({
       compress: { warnings: false }
     }),
-     
+
     defineproduction: new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production')
     }),
-    
+
     commonschunk: new webpack.optimize.CommonsChunkPlugin(
       '__init__.' + (new Date()).getTime() + '.js'
     ),
-    
+
     // Implicit jQuery is expected here and there
     jquery: new webpack.ProvidePlugin({
       $: 'jquery',
       jQuery: 'jquery',
       'window.jQuery': 'jquery'
     }),
-    
+
     // Plone defaults to moment built with locales
     moment: new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
-    
+
     // Write templates
     write: new WriteFileWebpackPlugin(),
-    
+
     copy: new CopyWebpackPlugin(
       [{ from: path.join(sourcePath, '..'), to: '..' }],
       { ignore: ['**/' + basename + '/*.js',
@@ -173,7 +178,7 @@ function PloneWebpackPlugin(options) {
           return '**/' + basename + '/' + name;
         }))}
     ),
-     
+
     templates: templates.map(function(name) {
       return new HtmlWebpackPlugin({
         filename: name,
@@ -184,7 +189,7 @@ function PloneWebpackPlugin(options) {
         inject: false
       })
     })
-    
+
   };
 
   this.development = {
@@ -199,6 +204,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
         this.loaders.shim.jqtree,
+        this.loaders.shim.jquery,
         this.loaders.shim.jqueryeventdrop,
         this.loaders.shim.jquerytoolstabs,
         this.loaders.shim.ploneformgen,
@@ -242,6 +248,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
         this.loaders.shim.jqtree,
+        this.loaders.shim.jquery,
         this.loaders.shim.jqueryeventdrop,
         this.loaders.shim.jquerytoolstabs,
         this.loaders.shim.ploneformgen,
@@ -326,7 +333,7 @@ PloneWebpackPlugin.prototype.apply = function(compiler) {
         href = url.resolve(portalUrl, path_.substring(ns().length));
       }
       resolveResource(href, resolveExtensions, this_, callback, debug);
-      
+
     // Fallback to the rest of Webpack resolver chain
     } else {
       callback();
@@ -341,7 +348,7 @@ PloneWebpackPlugin.prototype.apply = function(compiler) {
     // Skip known false positive Plone entry points
     if (resolveBlacklist.indexOf(data.request) > -1) {
       callback();
-      
+
     // Resolve from Plone
     } else {
       resolveResource(href, resolveExtensions, this_, callback, debug);
