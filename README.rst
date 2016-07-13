@@ -5,15 +5,16 @@ Plone Webpack Plugin
 building completely Webpack managed themes for Plone_ 5, using the resources
 shipped with a Plone release.
 
+.. _Plone: https://plone.com/
+
 Please, see plonetheme.webpackexample_ for an example of use.
 
 .. _plonetheme.webpackexample: https://github.com/datakurre/plonetheme.webpackexample
 
-In short, this package makes it possible to build Plone_-themes with Webpack so
+In short, this package makes it possible to build Plone-themes with Webpack so
 that all possible frontend resources are managed by Webpack and are built from
 the package versionis shipped with Plone.
 
-.. _Plone: https://plone.com/
 
 This plugin is still a work in progress and not all available Plone patterns
 supported yet, though, all the default ones are.
