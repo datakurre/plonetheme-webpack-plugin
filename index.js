@@ -286,6 +286,7 @@ function ns(path) {
 PloneWebpackPlugin.prototype.apply = function(compiler) {
   const portalUrl = this.portalUrl;
   const portalPath = url.parse(this.portalUrl).pathname;
+  const portalBase = portalUrl.substr(0, portalUrl.length - portalPath.length);
   const resolveExtensions = this.resolveExtensions;
   const resolveBlacklist = this.resolveBlacklist;
   const resolveMapping = this.resolveMapping;
@@ -304,9 +305,9 @@ PloneWebpackPlugin.prototype.apply = function(compiler) {
       callback();
 
     // Resolve files with full Plone path
-    } else if (request.startsWith('./' + portalUrl)) {
-      href = portalUrl + request.substring(
-          2 + portalUrl.length).replace(/\/+/g, '/');
+    } else if (request.startsWith('./' + portalBase)) {
+      href = portalBase + request.substring(
+          2 + portalBase.length).replace(/\/+/g, '/');
       resolveResource(href, resolveExtensions, this_, callback, debug);
 
     // Resolve known missing files
@@ -324,7 +325,8 @@ PloneWebpackPlugin.prototype.apply = function(compiler) {
       }, callback);
 
     // Resolve files with Plone context + relative path
-    } else if (path_.startsWith(ns(portalPath))) {
+    } else if (path_.startsWith(ns(portalPath)) ||
+               path_.startsWith(ns('++'))) {
       if (resolveMapping[request] !== undefined) {
         href = url.resolve(portalUrl, url.resolve(
           data.path + '/', resolveMapping[request]
