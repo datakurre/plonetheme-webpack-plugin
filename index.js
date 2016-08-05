@@ -122,14 +122,14 @@ function PloneWebpackPlugin(options) {
         loader: 'exports?$.drop'
       },
 
-      jquerytoolstabs: {
-        test: /jquerytools\.tabs/,
+      jquerytools: {
+        test: /jquery\.tools\.overlay/,
         loader: 'exports?$.tabs'
       },
 
       ploneformgen: {
-        test: /PloneFormGen.*quickedit\.js$/,
-        loader: 'imports?requirejs=>define,_tabs=jquerytools.tabs'
+        test: /pfgquickedit\/quickedit/,
+        loader: 'imports?requirejs=>define,_tabs=resource-plone-app-jquerytools-js'
       }
 
     }
@@ -165,6 +165,12 @@ function PloneWebpackPlugin(options) {
 
     // Plone defaults to moment built with locales
     moment: new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+
+    jqtree: new webpack.NormalModuleReplacementPlugin(
+      /^\.\/jqtree-circle\.png$/, function(ob) {
+         ob.request = '++plone++static/components/jqtree/jqtree-circle.png';
+      }
+    ),
 
     // Write templates
     write: new WriteFileWebpackPlugin(),
@@ -206,7 +212,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.jqtree,
         this.loaders.shim.jquery,
         this.loaders.shim.jqueryeventdrop,
-        this.loaders.shim.jquerytoolstabs,
+        this.loaders.shim.jquerytools,
         this.loaders.shim.ploneformgen,
         this.loaders.shim.recurrenceinput,
         this.loaders.shim.tinymce,
@@ -231,8 +237,9 @@ function PloneWebpackPlugin(options) {
       this.plugins.hrm,
       this.plugins.jquery,
       this.plugins.moment,
+      this.plugins.jqtree,
       this.plugins.plone,
-      this.plugins.write,
+      this.plugins.write
     ])
   };
 
@@ -250,7 +257,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.jqtree,
         this.loaders.shim.jquery,
         this.loaders.shim.jqueryeventdrop,
-        this.loaders.shim.jquerytoolstabs,
+        this.loaders.shim.jquerytools,
         this.loaders.shim.ploneformgen,
         this.loaders.shim.recurrenceinput,
         this.loaders.shim.tinymce,
@@ -269,6 +276,7 @@ function PloneWebpackPlugin(options) {
       this.plugins.extract,
       this.plugins.jquery,
       this.plugins.moment,
+      this.plugins.jqtree,
       this.plugins.plone,
       this.plugins.uglify
     ])
