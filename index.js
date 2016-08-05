@@ -83,7 +83,7 @@ function PloneWebpackPlugin(options) {
     shim: {
 
       ace: {
-        test: /mockup\/texteditor\/pattern'/,
+        test: /mockup\/texteditor\/pattern/,
         loader: 'imports?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini'
       },
 
@@ -198,10 +198,14 @@ function PloneWebpackPlugin(options) {
 
   };
 
+  this.alias = merge(config.paths, {
+    'ace': 'brace'
+  });
+
   this.development = {
     devtool: 'eval',
     resolve: {
-      alias: config.paths
+      alias: this.alias
     },
     module: {
       loaders: [
@@ -245,7 +249,7 @@ function PloneWebpackPlugin(options) {
 
   this.production = {
     resolve: {
-      alias: config.paths
+      alias: this.alias
     },
     module: {
       exprContextCritical: false,
