@@ -19,7 +19,7 @@ const defaults = {
   sourcePath: null,
   publicPath: '/Plone/++theme++webpack/',
   resolveExtensions: ['.js', ''],
-  resolveBlacklist: ['events', 'translate'],
+  resolveBlacklist: ['plone', 'events', 'translate'],
   resolveMapping: {
     './jqtree-circle.png': './components/jqtree/jqtree-circle.png'
   },
