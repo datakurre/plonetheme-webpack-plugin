@@ -311,7 +311,7 @@ PloneWebpackPlugin.prototype.apply = function(compiler) {
       resolveResource(href, resolveExtensions, this_, callback, debug);
 
     // Resolve known missing files
-    } else if (request !== 'LICENSE' && path_.startsWith(ns(portalPath)) &&
+    } else if (request !== 'LICENSE' && request.match(/^\.\/[^\/]+$/) &&
       fs.existsSync(path.join(__dirname, 'static', request))) {
 
       // - query.recurrenceinput.css, bundled with CMFPlone, references
