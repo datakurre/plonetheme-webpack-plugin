@@ -7,17 +7,16 @@ shipped with a Plone release.
 
 .. _Plone: https://plone.com/
 
-Please, see plonetheme.webpackexample_ for an example of use.
+Please, see plonetheme.webpacktemplate_ for an example of use.
 
-.. _plonetheme.webpackexample: https://github.com/datakurre/plonetheme.webpackexample
+.. _plonetheme.webpacktemplate: https://github.com/datakurre/plonetheme.webpacktemplate
 
 In short, this package makes it possible to build Plone-themes with Webpack so
 that all possible frontend resources are managed by Webpack and are built from
 the package versionis shipped with Plone.
 
-
 This plugin is still a work in progress and not all available Plone patterns
-supported yet, though, all the default ones are.
+may be supported yet, though, all the default ones should be.
 
 This plugin requires a running Plone site while executing the build (or
 webpack-dev-server) and does several things, which can be explained best
@@ -31,21 +30,24 @@ with the following minimal ``webpack.config.js``:
 
     const PlonePlugin = require('plonetheme-webpack-plugin');
 
+    const SITENAME = process.env.SITENAME || 'Plone';
+    const THEMENAME = process.env.THEMENAME || 'mytheme';
+
     const PATHS = {
-      src: path.join(__dirname, 'src', 'mytheme'),
-      build: path.join(__dirname, 'theme', 'mytheme')
+      src: path.join(__dirname, 'src', THEMENAME),
+      build: path.join(__dirname, 'theme', THEMENAME)
     };
 
     const PLONE = new PlonePlugin({
-      portalUrl: 'http://localhost:8080/Plone',
-      publicPath: '/Plone/++theme++mytheme/',
+      portalUrl: 'http://localhost:8080/' + SITENAME,
+      publicPath: '/' + SITENAME + '/++theme++' + THEMENAME + '/',
       sourcePath: PATHS.src
     });
 
     const common = {
       entry: {
-       'anonymous': path.join(PATHS.src, 'anonymous'),
-       'authenticated': path.join(PATHS.src, 'authenticated')
+       'default': path.join(PATHS.src, 'default'),
+       'logged-in': path.join(PATHS.src, 'logged-in')
       },
       output: {
         path: PATHS.build
@@ -62,7 +64,10 @@ with the following minimal ``webpack.config.js``:
 
       case 'webpack-dev-server':
         module.exports = merge(PLONE.development, common, {
-          entry: path.join(PATHS.src, 'authenticated')
+          entry: [
+            path.join(PATHS.src, 'default'),
+            path.join(PATHS.src, 'logged-in')
+          ]
         });
         break;
     }
@@ -79,7 +84,7 @@ with the following minimal ``webpack.config.js``:
    the plugin instance. The presets already include the plugin itself.
 
 3. A common Webpack configuration is defined with the bundles to build.
-   Please, see `plonetheme.webpackexample`_ for example bundles and
+   Please, see `plonetheme.webpacktemplate`_ for example bundles and
    example theme mockups (where final bundles get injected).
 
 4. Finally, PloneWebpackPlugin-presets for production and development
@@ -112,6 +117,9 @@ following ``package.json`` example:
         "webpack": "^1.13.1",
         "webpack-dev-server": "^1.14.1",
         "webpack-merge": "^0.14.0"
+      },
+      "dependencies": {
+        "brace": "^0.8.0"
       }
     }
 
