@@ -91,12 +91,32 @@ function PloneWebpackPlugin(options) {
 
       backbone: {
         test: /backbone\.paginator/,
-        loader: 'imports?_=underscore,Backbone=backbone'
+        loader: 'imports?jQuery=jquery,_=underscore,Backbone=backbone'
       },
 
-      jquery: {
-        test: /components\/jquery/,
-        loader: 'expose?$!expose?jQuery'
+      bootstraptransition : {
+        test: /bootstrap\/js\/transition/,
+        loader: 'imports?jQuery=jquery!exports?window.jQuery.support.transition'
+      },
+
+      bootstrapcollapse: {
+        test: /bootstrap\/js\/collapse/,
+        loader: 'imports?jQuery=jquery'
+      },
+
+      bootstraptooltip: {
+        test: /bootstrap\/js\/tooltip/,
+        loader: 'imports?jQuery=jquery'
+      },
+
+      bootstrapdropdown : {
+        test: /bootstrap\/js\/dropdown/,
+        loader: 'imports?jQuery=jquery'
+      },
+
+      bootstrapalert : {
+        test: /bootstrap\/js\/alert/,
+        loader: 'imports?jQuery=jquery'
       },
 
       jqtree: {
@@ -106,7 +126,7 @@ function PloneWebpackPlugin(options) {
 
       recurrenceinput: {
         test: /jquery\.recurrenceinput/,
-        loader: 'imports?tmpl=jquery.tmpl'
+        loader: 'imports?jQuery=jquery,tmpl=jquery.tmpl'
       },
 
       tinymce: {
@@ -121,12 +141,38 @@ function PloneWebpackPlugin(options) {
 
       jqueryeventdrop: {
         test: /jquery\.event\.drop/,
-        loader: 'exports?$.drop'
+        loader: 'imports?jQuery=jquery!exports?jQuery.drop'
+      },
+
+      jqueryeventdrag: {
+        test: /jquery\.event\.drag/,
+        loader: 'imports?jQuery=jquery'
+      },
+
+      jquerytmpl: {
+        test: /jquery\.tmpl/,
+        loader: 'imports?$=jquery'
+      },
+
+      jquerycookie: {
+        test: /jquery\.cookie/,
+        loader: 'imports?$=jquery'
+      },
+
+      // Hack to work around webpack confusing fallback jquery define
+      plone: {
+        test: /\+\+resource\+\+plone/,
+        loader: 'imports?__WEBPACK_LOCAL_MODULE_0__=jquery'
       },
 
       jquerytools: {
         test: /jquery\.tools\.overlay/,
-        loader: 'exports?$.tabs'
+        loader: 'imports?$=jquery!exports?$.tabs'
+      },
+
+      select2: {
+        test: /select2\/select2/,
+        loader: 'imports?jQuery=jquery'
       },
 
       ploneformgen: {
@@ -215,10 +261,19 @@ function PloneWebpackPlugin(options) {
         this.loaders.less,
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
+        this.loaders.shim.bootstrapalert,
+        this.loaders.shim.bootstrapcollapse,
+        this.loaders.shim.bootstrapdropdown,
+        this.loaders.shim.bootstraptooltip,
+        this.loaders.shim.bootstraptransition,
         this.loaders.shim.jqtree,
-        this.loaders.shim.jquery,
+        this.loaders.shim.jquerycookie,
+        this.loaders.shim.jqueryeventdrag,
         this.loaders.shim.jqueryeventdrop,
+        this.loaders.shim.jquerytmpl,
         this.loaders.shim.jquerytools,
+        this.loaders.shim.select2,
+        this.loaders.shim.plone,
         this.loaders.shim.ploneformgen,
         this.loaders.shim.recurrenceinput,
         this.loaders.shim.tinymce,
@@ -241,7 +296,6 @@ function PloneWebpackPlugin(options) {
     plugins: this.plugins.templates.concat([
       this.plugins.copy,
       this.plugins.hrm,
-      this.plugins.jquery,
       this.plugins.moment,
       this.plugins.jqtree,
       this.plugins.plone,
@@ -260,10 +314,19 @@ function PloneWebpackPlugin(options) {
         this.loaders.extract.less,
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
+        this.loaders.shim.bootstrapalert,
+        this.loaders.shim.bootstrapcollapse,
+        this.loaders.shim.bootstrapdropdown,
+        this.loaders.shim.bootstraptooltip,
+        this.loaders.shim.bootstraptransition,
         this.loaders.shim.jqtree,
-        this.loaders.shim.jquery,
+        this.loaders.shim.jquerycookie,
+        this.loaders.shim.jqueryeventdrag,
         this.loaders.shim.jqueryeventdrop,
+        this.loaders.shim.jquerytmpl,
         this.loaders.shim.jquerytools,
+        this.loaders.shim.select2,
+        this.loaders.shim.plone,
         this.loaders.shim.ploneformgen,
         this.loaders.shim.recurrenceinput,
         this.loaders.shim.tinymce,
@@ -280,7 +343,6 @@ function PloneWebpackPlugin(options) {
       this.plugins.copy,
       this.plugins.defineproduction,
       this.plugins.extract,
-      this.plugins.jquery,
       this.plugins.moment,
       this.plugins.jqtree,
       this.plugins.plone,
