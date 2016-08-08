@@ -33,7 +33,9 @@ function option(options, name, defaults) {
 
 // Helper for passing options query for webpack loaders
 function q(loader, query) {
-    return loader + "?" + JSON.stringify(query);
+    return loader + "?" + JSON.stringify(query).replace(
+        // Trick webpack to resolve localhost paths (e.g. for fonts)
+        new RegExp('http://localhost:', 'g'), './http://localhost:');
 }
 
 function PloneWebpackPlugin(options) {
