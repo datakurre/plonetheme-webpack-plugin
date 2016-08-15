@@ -67,12 +67,21 @@ function PloneWebpackPlugin(options) {
     },
 
     extract: {
+      css: {
+        test: /\.css$/,
+        loader: ExtractTextPlugin.extract(['css'])
+      },
       less: {
         test: /\.less$/,
         loader: ExtractTextPlugin.extract([
           'css', q('less', { globalVars: less.globalVars })
         ])
       }
+    },
+
+    css: {
+      test: /\.css$/,
+      loaders: ['style', 'css']
     },
 
     less: {
@@ -85,98 +94,98 @@ function PloneWebpackPlugin(options) {
     shim: {
 
       ace: {
-        test: /mockup\/texteditor\/pattern/,
+        test: /mockup\/texteditor\/pattern(.js)?$/,
         loader: 'imports?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini'
       },
 
       backbone: {
-        test: /backbone\.paginator/,
+        test: /backbone\.paginator(.js)?$/,
         loader: 'imports?jQuery=jquery,_=underscore,Backbone=backbone'
       },
 
       bootstraptransition : {
-        test: /bootstrap\/js\/transition/,
+        test: /bootstrap\/js\/transition(.js)?$/,
         loader: 'imports?jQuery=jquery!exports?window.jQuery.support.transition'
       },
 
       bootstrapcollapse: {
-        test: /bootstrap\/js\/collapse/,
+        test: /bootstrap\/js\/collapse(.js)?$/,
         loader: 'imports?jQuery=jquery'
       },
 
       bootstraptooltip: {
-        test: /bootstrap\/js\/tooltip/,
+        test: /bootstrap\/js\/tooltip(.js)?$/,
         loader: 'imports?jQuery=jquery'
       },
 
       bootstrapdropdown : {
-        test: /bootstrap\/js\/dropdown/,
+        test: /bootstrap\/js\/dropdown(.js)?$/,
         loader: 'imports?jQuery=jquery'
       },
 
       bootstrapalert : {
-        test: /bootstrap\/js\/alert/,
+        test: /bootstrap\/js\/alert(.js)?$/,
         loader: 'imports?jQuery=jquery'
       },
 
       jqtree: {
-        test: /jqtree/,
+        test: /jqtree\/tree\.jquery(.js)?$/,
         loader: 'imports?$=jquery,this=>{jQuery:$}'
       },
 
       recurrenceinput: {
-        test: /jquery\.recurrenceinput/,
+        test: /jquery\.recurrenceinput(.js)?$/,
         loader: 'imports?jQuery=jquery,tmpl=jquery.tmpl'
       },
 
       tinymce: {
-        test: /tinymce$/,
+        test: /tinymce(.js)?$/,
         loader: 'imports?document=>window.document,this=>window!exports?window.tinymce'
       },
 
       tinymceplugins: {
-        test: /tinymce\/plugins/,
+        test: /tinymce\/plugins.*(.js)?$/,
         loader: 'imports?tinymce,this=>{tinymce:tinymce}'
       },
 
       jqueryeventdrop: {
-        test: /jquery\.event\.drop/,
+        test: /jquery\.event\.drop(.js)?$/,
         loader: 'imports?jQuery=jquery!exports?jQuery.drop'
       },
 
       jqueryeventdrag: {
-        test: /jquery\.event\.drag/,
+        test: /jquery\.event\.drag(.js)?$/,
         loader: 'imports?jQuery=jquery'
       },
 
       jquerytmpl: {
-        test: /jquery\.tmpl/,
+        test: /jquery\.tmpl(.js)?$/,
         loader: 'imports?$=jquery'
       },
 
       jquerycookie: {
-        test: /jquery\.cookie/,
+        test: /jquery\.cookie(.js)?$/,
         loader: 'imports?$=jquery'
       },
 
       // Hack to work around webpack confusing fallback jquery define
       plone: {
-        test: /\+\+resource\+\+plone/,
+        test: /\+\+resource\+\+plone(.js)?$/,
         loader: 'imports?__WEBPACK_LOCAL_MODULE_0__=jquery'
       },
 
       jquerytools: {
-        test: /jquery\.tools\.overlay/,
+        test: /jquery\.tools\.overlay(.js)?$/,
         loader: 'imports?$=jquery!exports?$.tabs'
       },
 
       select2: {
-        test: /select2\/select2/,
+        test: /select2\/select2(.js)?$/,
         loader: 'imports?jQuery=jquery'
       },
 
       ploneformgen: {
-        test: /pfgquickedit\/quickedit/,
+        test: /pfgquickedit\/quickedit(.js)?$/,
         loader: 'imports?requirejs=>define,_tabs=resource-plone-app-jquerytools-js'
       }
 
@@ -258,6 +267,7 @@ function PloneWebpackPlugin(options) {
     module: {
       loaders: [
         this.loaders.url,
+        this.loaders.css,
         this.loaders.less,
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
@@ -311,6 +321,7 @@ function PloneWebpackPlugin(options) {
       exprContextCritical: false,
       loaders: [
         this.loaders.url,
+        this.loaders.extract.css,
         this.loaders.extract.less,
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
