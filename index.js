@@ -32,10 +32,10 @@ function option(options, name, defaults) {
 }
 
 // Helper for passing options query for webpack loaders
-function q(loader, query) {
+function q(loader, query, portalUrl) {
     return loader + "?" + JSON.stringify(query).replace(
-        // Trick webpack to resolve localhost paths (e.g. for fonts)
-        new RegExp('http://localhost:', 'g'), './http://localhost:');
+        // Trick webpack to resolve full portal paths (e.g. for fonts)
+        new RegExp(portalUrl + '/', 'g'), '');
 }
 
 function PloneWebpackPlugin(options) {
@@ -63,31 +63,33 @@ function PloneWebpackPlugin(options) {
 
     url: {
       test: /\.(png|gif|otf|eot|svg|ttf|woff|woff2)(\?.*)?$/,
-      loader: 'url', query: {limit: 8192}
+      loader: 'url', query: { limit: 8192 }
     },
 
     extract: {
       css: {
-        test: /\.css$/,
+        test: /\.css$/i,
         loader: ExtractTextPlugin.extract(['css'])
       },
       less: {
-        test: /\.less$/,
+        test: /\.less$/i,
         loader: ExtractTextPlugin.extract([
-          'css', q('less', { globalVars: less.globalVars })
+          'css', q('less', { globalVars: less.globalVars },
+                   this.portalUrl)
         ])
       }
     },
 
     css: {
-      test: /\.css$/,
+      test: /\.css$/i,
       loaders: ['style', 'css']
     },
 
     less: {
-      test: /\.less$/,
+      test: /\.less$/i,
       loaders: [
-        'style', 'css',  q('less', { globalVars: less.globalVars })
+        'style', 'css', q('less', { globalVars: less.globalVars },
+                          this.portalUrl)
       ]
     },
 
@@ -395,6 +397,11 @@ PloneWebpackPlugin.prototype.apply = function(compiler) {
     } else if (request.startsWith('./' + portalBase)) {
       href = portalBase + request.substring(
           2 + portalBase.length).replace(/\/+/g, '/');
+      resolveResource(href, resolveExtensions, this_, callback, debug);
+
+    // Resolve files with ++-starting path (most probably a Plone resources)
+    } else if (request.startsWith('./++')) {
+      href = portalUrl + '/' + request.substring(2);
       resolveResource(href, resolveExtensions, this_, callback, debug);
 
     // Resolve known missing files
