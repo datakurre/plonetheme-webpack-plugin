@@ -212,7 +212,7 @@ function PloneWebpackPlugin(options) {
     }),
 
     commonschunk: new webpack.optimize.CommonsChunkPlugin(
-      '__init__.' + (new Date()).getTime() + '.js'
+      'commons.' + (new Date()).getTime() + '.js'
     ),
 
     // Implicit jQuery is expected here and there
