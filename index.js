@@ -215,13 +215,6 @@ function PloneWebpackPlugin(options) {
       'commons.' + (new Date()).getTime() + '.js'
     ),
 
-    // Implicit jQuery is expected here and there
-    jquery: new webpack.ProvidePlugin({
-      $: 'jquery',
-      jQuery: 'jquery',
-      'window.jQuery': 'jquery'
-    }),
-
     // Plone defaults to moment built with locales
     moment: new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
 
