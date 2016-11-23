@@ -24,6 +24,7 @@ const defaults = {
   resolveMapping: {
     './jqtree-circle.png': './components/jqtree/jqtree-circle.png'
   },
+  ignore: null,
   debug: false
 };
 
@@ -51,9 +52,16 @@ function PloneWebpackPlugin(options) {
   const less = getLessVariables(this.portalUrl);
   const config = getRequireJSConfig(this.portalUrl);
 
-  // Build list of theme templates to run through HTML webpack plugin
+  // List of theme templates to run through HTML webpack plugin
   const basename = path.basename(sourcePath);
   const templates = glob.sync(path.join(sourcePath, '**', '?(*.html|manifest.cfg)'));
+
+  // List of ignore globs to skips on copy plugin
+  const ignore = option(options, 'ignore', { ignore: [
+    path.join(basename, '?(*.js|*.jsx|*.css|*.less|*.scss)')
+  ]}).concat(templates.map(function(filename) {
+    return filename.substring(sourcePath.length - basename.length);
+  }));
 
   // Pre-configure loaders
   this.loaders = {
@@ -225,12 +233,7 @@ function PloneWebpackPlugin(options) {
     write: new WriteFileWebpackPlugin(),
 
     copy: new CopyWebpackPlugin(
-      [{ from: path.join(sourcePath, '..'), to: '..' }],
-      { ignore: ['**/' + basename + '/?(*.js|*.jsx|*.css|*.less|*.scss)'].concat(
-        templates.map(function(name) {
-          return name.substring(sourcePath.replace(/\/*$/, '/').length);
-      }))}
-    ),
+      [{ from: path.join(sourcePath, '..'), to: '..' }], { ignore: ignore }),
 
     templates: templates.map(function(name) {
       return new HtmlWebpackPlugin({
