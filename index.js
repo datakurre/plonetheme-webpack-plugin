@@ -1,4 +1,5 @@
 const fs = require('fs');
+const glob = require('glob');
 const merge = require('webpack-merge');
 const path = require('path');
 const url = require('url');
@@ -52,11 +53,7 @@ function PloneWebpackPlugin(options) {
 
   // Build list of theme templates to run through HTML webpack plugin
   const basename = path.basename(sourcePath);
-  const templates = fs.readdirSync(sourcePath).filter(function (name) {
-    return name.match(/.*\.html/) || name === 'manifest.cfg';
-  }).map(function(name) {
-    return name;
-  });
+  const templates = glob.sync(path.join(sourcePath, '**', '?(*.html|manifest.cfg)'));
 
   // Pre-configure loaders
   this.loaders = {
@@ -157,17 +154,17 @@ function PloneWebpackPlugin(options) {
 
       jqueryeventdrag: {
         test: /jquery\.event\.drag(.js)?$/,
-        loader: 'imports?jQuery=jquery'
+        loader: 'imports?jQuery=jquery!exports?jQuery.drag'
       },
 
       jquerytmpl: {
         test: /jquery\.tmpl(.js)?$/,
-        loader: 'imports?$=jquery'
+        loader: 'imports?$=jquery!exports?jQuery.tmpl'
       },
 
       jquerycookie: {
         test: /jquery\.cookie(.js)?$/,
-        loader: 'imports?$=jquery'
+        loader: 'imports?$=jquery!exports?jQuery.cookie'
       },
 
       // Hack to work around webpack confusing fallback jquery define
@@ -229,18 +226,16 @@ function PloneWebpackPlugin(options) {
 
     copy: new CopyWebpackPlugin(
       [{ from: path.join(sourcePath, '..'), to: '..' }],
-      { ignore: ['**/' + basename + '/*.js',
-                 '**/' + basename + '/*.less',
-                 '**/' + basename + '/*.jsx'].concat(
+      { ignore: ['**/' + basename + '/?(*.js|*.jsx|*.css|*.less|*.scss)'].concat(
         templates.map(function(name) {
-          return '**/' + basename + '/' + name;
-        }))}
+          return name.substring(sourcePath.replace(/\/*$/, '/').length);
+      }))}
     ),
 
     templates: templates.map(function(name) {
       return new HtmlWebpackPlugin({
-        filename: name,
-        template: path.join(sourcePath, name),
+        filename: name.substring(sourcePath.replace(/\/*$/, '/').length),
+        template: name,
         chunksSortMode: function(a, b) {
           return a.names[0] > b.names[0] ? 1 : -1;
         },
