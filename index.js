@@ -229,6 +229,12 @@ function PloneWebpackPlugin(options) {
       }
     ),
 
+    brokenrelativeresource: new webpack.NormalModuleReplacementPlugin(
+      new RegExp('^\\.\\./[^+]*\\+\\+resource\\+\\+'), function(ob) {
+         ob.request = ob.request.replace(/^[\.\/]+/, '');
+      }
+    ),
+
     // Write templates
     write: new WriteFileWebpackPlugin(),
 
@@ -302,6 +308,7 @@ function PloneWebpackPlugin(options) {
       this.plugins.moment,
       this.plugins.jqtree,
       this.plugins.plone,
+      this.plugins.brokenrelativeresource,
       this.plugins.write
     ])
   };
@@ -350,6 +357,7 @@ function PloneWebpackPlugin(options) {
       this.plugins.moment,
       this.plugins.jqtree,
       this.plugins.plone,
+      this.plugins.brokenrelativeresource,
       this.plugins.uglify
     ])
   };
