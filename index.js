@@ -14,6 +14,40 @@ const getLessVariables = require('./lib/getLessVariables');
 const getRequireJSConfig = require('./lib/getRequireJSConfig');
 const resolveResource = require('./lib/resolveResource');
 
+function AddToContextPlugin(condition, extras) {
+  this.condition = condition;
+  this.extras = extras || [];
+}
+
+// http://stackoverflow.com/questions/30065018/
+// dynamically-require-an-aliased-module-using-webpack
+AddToContextPlugin.prototype.apply = function (compiler) {
+  const condition = this.condition;
+  const extras = this.extras;
+  var newContext = false;
+  compiler.plugin('context-module-factory', function (cmf) {
+    cmf.plugin('after-resolve', function (items, callback) {
+      newContext = true;
+      return callback(null, items);
+    });
+    // this method is called for every path in the ctx
+    // we just add our extras the first call
+    cmf.plugin('alternatives', function (items, callback) {
+      if (newContext && items[0].context.match(condition)) {
+        newContext = false;
+        var alternatives = extras.map(function (extra) {
+          return {
+            context: items[0].context,
+            request: extra
+          };
+        });
+        items.push.apply(items, alternatives);
+      }
+      return callback(null, items);
+    });
+  });
+};
+
 // Plugin defaults, also available at PloneWebpackPlugin.defaults
 const defaults = {
   portalUrl: 'http://localhost:8080/Plone',
@@ -235,6 +269,30 @@ function PloneWebpackPlugin(options) {
       }
     ),
 
+    // Fix dynamic requires in structure pattern
+    // https://github.com/plone/mockup/commit/89de866dff89a455bd4102c84a3fa8f9a0bcc34b
+    structurecontextreplacement: new webpack.ContextReplacementPlugin(
+      /^\.$|mockup\/structure|mockup\/patterns\/structure/, function(ob) {
+        if (ob.request && ob.request.match('^\.$') &&
+            ob.context && ob.context.match('mockup\/structure')) {
+          // resolve from Plone
+          console.log("Error: Can properly resolve structure pattern only from a file system checkout. .");
+        } else if (ob.resource &&
+                   ob.resource.match(/mockup\/patterns\/structure/)) {
+          // resolve from FS
+          ob.regExp = /^\.\/.*$|^mockup-patterns-structure-url\/.*$/;
+        }
+      }
+    ),
+    structureaddtocontext: new AddToContextPlugin(
+      /mockup\/structure|mockup\/patterns\/structure/, [
+        'mockup-patterns-structure-url/js/actions',
+        'mockup-patterns-structure-url/js/actionmenu',
+        'mockup-patterns-structure-url/js/navigation',
+        'mockup-patterns-structure-url/js/collections/result'
+      ]
+    ),
+
     // Write templates
     write: new WriteFileWebpackPlugin(),
 
@@ -307,8 +365,10 @@ function PloneWebpackPlugin(options) {
       this.plugins.hrm,
       this.plugins.moment,
       this.plugins.jqtree,
-      this.plugins.plone,
       this.plugins.brokenrelativeresource,
+      this.plugins.structurecontextreplacement,
+      this.plugins.structureaddtocontext,
+      this.plugins.plone,
       this.plugins.write
     ])
   };
@@ -356,8 +416,10 @@ function PloneWebpackPlugin(options) {
       this.plugins.extract,
       this.plugins.moment,
       this.plugins.jqtree,
-      this.plugins.plone,
       this.plugins.brokenrelativeresource,
+      this.plugins.structurecontextreplacement,
+      this.plugins.structureaddtocontext,
+      this.plugins.plone,
       this.plugins.uglify
     ])
   };
