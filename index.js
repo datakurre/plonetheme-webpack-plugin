@@ -388,8 +388,8 @@ PloneWebpackPlugin.prototype.apply = function(compiler) {
     var path_ = url.resolve(data.path + '/', request);
     var href;
 
-    // Skip existing filesystem paths
-    if (fs.existsSync(request)) {
+    // Skip built-in modules and existing filesystem paths
+    if (!data.request.length || fs.existsSync(request)) {
       callback();
 
     // Resolve files with full Plone path
