@@ -170,8 +170,8 @@ function PloneWebpackPlugin(options) {
       },
 
       jqtree: {
-        test: /jqtree\/tree\.jquery(.js)?$/,
-        loader: 'imports?$=jquery,this=>{jQuery:$}'
+        test: /jqtree\/(tree\.jquerynode|lib\/.*)(.js)?$/,
+        loader: 'imports?jQuery=jquery,$=jquery,this=>{jQuery:$}'
       },
 
       recurrenceinput: {
@@ -201,12 +201,12 @@ function PloneWebpackPlugin(options) {
 
       jquerytmpl: {
         test: /jquery\.tmpl(.js)?$/,
-        loader: 'imports?$=jquery!exports?jQuery.tmpl'
+        loader: 'imports?jQuery=jquery,$=jquery!exports?jQuery.tmpl'
       },
 
       jquerycookie: {
         test: /jquery\.cookie(.js)?$/,
-        loader: 'imports?$=jquery!exports?jQuery.cookie'
+        loader: 'imports?jQuery=jquery,$=jquery!exports?jQuery.cookie'
       },
 
       // Hack to work around webpack confusing fallback jquery define
@@ -217,11 +217,11 @@ function PloneWebpackPlugin(options) {
 
       jquerytools: {
         test: /jquery\.tools\.overlay(.js)?$/,
-        loader: 'imports?$=jquery!exports?$.tabs'
+        loader: 'imports?jQuery=jquery,$=jquery!exports?$.tabs'
       },
 
       select2: {
-        test: /select2\/select2(.js)?$/,
+        test: /select2\/select2(.min)?(.js)?$/,
         loader: 'imports?jQuery=jquery'
       },
 
