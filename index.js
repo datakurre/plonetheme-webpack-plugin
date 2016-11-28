@@ -304,7 +304,9 @@ function PloneWebpackPlugin(options) {
         filename: name.substring(sourcePath.replace(/\/*$/, '/').length),
         template: name,
         chunksSortMode: function(a, b) {
-          return a.names[0] > b.names[0] ? 1 : -1;
+          return a.names[0].match(/^commons/) ? -1
+            : b.names[0].match(/^commons/) ? 1
+            : a.names[0] > b.names[0] ? 1 : -1;
         },
         inject: false
       })
