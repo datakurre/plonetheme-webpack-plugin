@@ -101,7 +101,7 @@ function PloneWebpackPlugin(options) {
   this.loaders = {
 
     url: {
-      test: /\.(png|gif|otf|eot|svg|ttf|woff|woff2)(\?.*)?$/,
+      test: /\.(png|gif|jpg|otf|eot|svg|ttf|woff|woff2)(\?.*)?$/,
       loader: 'url', query: { limit: 8192 }
     },
 
@@ -116,7 +116,11 @@ function PloneWebpackPlugin(options) {
           'css', q('less', { globalVars: less.globalVars },
                    this.portalUrl)
         ])
-      }
+      },
+      scss: {
+        test: /\.scss$/i,
+        loader: ExtractTextPlugin.extract(['css', 'scss'])
+      },
     },
 
     css: {
@@ -130,6 +134,11 @@ function PloneWebpackPlugin(options) {
         'style', 'css', q('less', { globalVars: less.globalVars },
                           this.portalUrl)
       ]
+    },
+
+    scss: {
+      test: /\.scss$/i,
+      loaders: ['style', 'css', 'scss']
     },
 
     shim: {
@@ -328,6 +337,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.url,
         this.loaders.css,
         this.loaders.less,
+        this.loaders.scss,
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
         this.loaders.shim.bootstrapalert,
@@ -385,6 +395,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.url,
         this.loaders.extract.css,
         this.loaders.extract.less,
+        this.loaders.extract.scss,
         this.loaders.shim.ace,
         this.loaders.shim.backbone,
         this.loaders.shim.bootstrapalert,
