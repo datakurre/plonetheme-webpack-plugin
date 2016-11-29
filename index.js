@@ -119,7 +119,7 @@ function PloneWebpackPlugin(options) {
       },
       scss: {
         test: /\.scss$/i,
-        loader: ExtractTextPlugin.extract(['css', 'scss'])
+        loader: ExtractTextPlugin.extract(['css', 'sass'])
       },
     },
 
@@ -138,7 +138,7 @@ function PloneWebpackPlugin(options) {
 
     scss: {
       test: /\.scss$/i,
-      loaders: ['style', 'css', 'scss']
+      loaders: ['style', 'css', 'sass']
     },
 
     shim: {
