@@ -185,7 +185,7 @@ function PloneWebpackPlugin(options) {
 
       recurrenceinput: {
         test: /jquery\.recurrenceinput(.js)?$/,
-        loader: 'imports?jQuery=jquery,tmpl=jquery.tmpl'
+        loader: 'imports?jQuery=jquery,tmpl=jquery.tmpl,_overlay=resource-plone-app-jquerytools-js,_dateinput=resource-plone-app-jquerytools-dateinput-js'
       },
 
       tinymce: {
