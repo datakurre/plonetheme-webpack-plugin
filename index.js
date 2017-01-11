@@ -218,6 +218,11 @@ function PloneWebpackPlugin(options) {
         loader: 'imports?jQuery=jquery,$=jquery!exports?jQuery.cookie'
       },
 
+      mockuputils: {
+        test: /mockupjs\/utils/,
+        loader: 'imports?jQuery=jquery,$=jquery'
+      },
+
       // Hack to work around webpack confusing fallback jquery define
       plone: {
         test: /\+\+resource\+\+plone(.js)?$/,
@@ -351,6 +356,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.jqueryeventdrop,
         this.loaders.shim.jquerytmpl,
         this.loaders.shim.jquerytools,
+        this.loaders.shim.mockuputils,
         this.loaders.shim.select2,
         this.loaders.shim.plone,
         this.loaders.shim.ploneformgen,
@@ -409,6 +415,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.jqueryeventdrop,
         this.loaders.shim.jquerytmpl,
         this.loaders.shim.jquerytools,
+        this.loaders.shim.mockuputils,
         this.loaders.shim.select2,
         this.loaders.shim.plone,
         this.loaders.shim.ploneformgen,
