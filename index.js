@@ -254,10 +254,9 @@ function PloneWebpackPlugin(options) {
 
     hrm: new webpack.HotModuleReplacementPlugin(),
 
-    extract: new ExtractTextPlugin({
-      filename: '[name].[chunkhash].css',
-      allChunks: true
-    }),
+    extract: new ExtractTextPlugin(
+      '[name].[chunkhash].css', { allChunks: true }
+    ),
 
     uglify: new webpack.optimize.UglifyJsPlugin({
       compress: { warnings: false }
