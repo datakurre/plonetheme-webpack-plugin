@@ -119,7 +119,7 @@ function PloneWebpackPlugin(options) {
       },
       scss: {
         test: /\.scss$/i,
-        loader: ExtractTextPlugin.extract(['css', 'sass'])
+        loader: ExtractTextPlugin.extract(['css', 'fast-sass'])
       },
     },
 
@@ -138,7 +138,7 @@ function PloneWebpackPlugin(options) {
 
     scss: {
       test: /\.scss$/i,
-      loaders: ['style', 'css', 'sass']
+      loaders: ['style', 'css', 'fast-sass']
     },
 
     shim: {
@@ -254,7 +254,10 @@ function PloneWebpackPlugin(options) {
 
     hrm: new webpack.HotModuleReplacementPlugin(),
 
-    extract: new ExtractTextPlugin('[name].[chunkhash].css'),
+    extract: new ExtractTextPlugin({
+      filename: '[name].[chunkhash].css',
+      allChunks: true
+    }),
 
     uglify: new webpack.optimize.UglifyJsPlugin({
       compress: { warnings: false }
