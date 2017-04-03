@@ -242,6 +242,11 @@ function PloneWebpackPlugin(options) {
       ploneformgen: {
         test: /pfgquickedit\/quickedit(.js)?$/,
         loader: 'imports?requirejs=>define,_tabs=resource-plone-app-jquerytools-js'
+      },
+
+      patternslib: {
+        test: /patternslib\/src\/core\/utils(.js)?$/,
+        loader: 'imports?_=underscore'
       }
 
     }
@@ -360,6 +365,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.jquerytools,
         this.loaders.shim.mockuputils,
         this.loaders.shim.select2,
+        this.loaders.shim.patternslib,
         this.loaders.shim.plone,
         this.loaders.shim.ploneformgen,
         this.loaders.shim.recurrenceinput,
@@ -419,6 +425,7 @@ function PloneWebpackPlugin(options) {
         this.loaders.shim.jquerytools,
         this.loaders.shim.mockuputils,
         this.loaders.shim.select2,
+        this.loaders.shim.patternslib,
         this.loaders.shim.plone,
         this.loaders.shim.ploneformgen,
         this.loaders.shim.recurrenceinput,
