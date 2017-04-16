@@ -56,7 +56,7 @@ const defaults = {
   resolveExtensions: ['.js', ''],
   resolveBlacklist: [
     'events',
-    'layouts-editor,
+    'layouts-editor',
     'plone',
     'translate'
   ],
