@@ -184,7 +184,7 @@ function PloneWebpackPlugin(options) {
       },
 
       jqtree: {
-        test: /jqtree\/(tree\.jquerynode|lib\/.*)(.js)?$/,
+        test: /jqtree\/(tree\.jquery|node|lib\/.*)(.js)?$/,
         loader: 'imports?jQuery=jquery,$=jquery,this=>{jQuery:$}'
       },
 
