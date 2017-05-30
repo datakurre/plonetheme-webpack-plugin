@@ -74,7 +74,7 @@ class AddToContextPlugin {
  *     debug: true
  * });
  */
-class PlonePlugin {
+class PlonePlugin {
   constructor(options) {
     if (options.portalUrl) {
       // Remove trailing slash from portalUrl
@@ -87,9 +87,7 @@ class PlonePlugin {
       sourcePath: null
     }, options);
 
-    assert(config.sourcePath);
-
-    extend(config, {
+    extend(config, {
       cachePath: path.join(process.cwd(), '.plone'),
       portalPath: url.parse(config.portalUrl).pathname,
       publicPath: '/Plone/++theme++webpack/',
@@ -99,10 +97,12 @@ class PlonePlugin {
         '',
         '.js'
       ],
-      ignore: [
-        path.join(path.basename(config.sourcePath), '?(*.js|*.jsx|*.css|*.less|*.scss)')
-      ],
-      templates: glob.sync(path.join(config.sourcePath, '**', '?(*.html|manifest.cfg)'))
+      ignore: config.sourcePath
+        ? [ path.join(path.basename(config.sourcePath), '?(*.js|*.jsx|*.css|*.less|*.scss)') ]
+        : [],
+      templates: config.sourcePath
+        ? glob.sync(path.join(config.sourcePath, '**', '?(*.html|manifest.cfg)'))
+        : []
     }, options);
 
     config = this.config = merge(config, {
@@ -116,15 +116,17 @@ class PlonePlugin {
     }, options);
 
     // Dynamically add templates into ignore globs
-    extend(config, {
-      'ignore': config.ignore.concat(
-          config.templates.map((filename) => {
-            return filename.substring(
-              config.sourcePath.length -
-              path.basename(config.sourcePath).length);
-          })
-      )
-    });
+    if (config.sourcePath) {
+      extend(config, {
+        'ignore': config.ignore.concat(
+            config.templates.map((filename) => {
+              return filename.substring(
+                config.sourcePath.length -
+                path.basename(config.sourcePath).length);
+            })
+        )
+      });
+    }
 
     // Preload Moment JS locales
     const self = this;
@@ -447,24 +449,28 @@ class PlonePlugin {
       // Write templates
       write: new WriteFileWebpackPlugin(),
 
-      copy: new CopyWebpackPlugin(
-        [{ from: path.join(config.sourcePath, '..'), to: '..' }],
-        { ignore: config.ignore }),
+      copy: config.sourcePath
+        ? new CopyWebpackPlugin(
+            [ { from: path.join(config.sourcePath, '..'), to: '..' } ],
+            { ignore: config.ignore })
+        : undefined,
 
-      templates: config.templates.map(function(name) {
-        return new HtmlWebpackPlugin({
-          filename: name.substring(config.sourcePath.replace(/\/*$/, '/').length),
-          template: name,
-          chunksSortMode: function(a, b) {
-            return a.names[0].match(/^commons/) ? -1
-              : b.names[0].match(/^commons/) ? 1
-                : a.names[0] > b.names[0] ? 1 : -1;
-          },
-          inject: false
-        })
-      }),
+      templates: config.sourcePath
+        ? config.templates.map(function(name) {
+            return new HtmlWebpackPlugin({
+              filename: name.substring(config.sourcePath.replace(/\/*$/, '/').length),
+              template: name,
+              chunksSortMode: function(a, b) {
+                return a.names[0].match(/^commons/) ? -1
+                  : b.names[0].match(/^commons/) ? 1
+                  : a.names[0] > b.names[0] ? 1 : -1;
+              },
+              inject: false
+            })
+          })
+        : undefined,
 
-      watchignore :new webpack.WatchIgnorePlugin([ config.cachePath ])
+      watchignore: new webpack.WatchIgnorePlugin([ config.cachePath ])
     };
 
     this.alias = merge(config.resolveAlias, {
@@ -524,8 +530,7 @@ class PlonePlugin {
         filename: 'bundle.js',
         publicPath: config.publicPath
       },
-      plugins: this.plugins.templates.concat([
-        this.plugins.copy,
+      plugins: [
         this.plugins.hrm,
         this.plugins.moment,
         this.plugins.jqtree,
@@ -535,8 +540,13 @@ class PlonePlugin {
         this.plugins.plone,
         this.plugins.write,
         this.plugins.watchignore
-      ])
+      ]
     };
+    if (config.sourcePath) {
+      this.development.plugins = this.development.plugins.concat(
+        this.plugins.templates.concat([ this.plugins.copy ])
+      );
+    }
 
     this.production = {
       resolve: {
@@ -583,9 +593,8 @@ class PlonePlugin {
         chunkFilename: '[chunkhash].js',
         publicPath: config.publicPath
       },
-      plugins: this.plugins.templates.concat([
+      plugins: [
         this.plugins.commonschunk,
-        this.plugins.copy,
         this.plugins.defineproduction,
         this.plugins.extract,
         this.plugins.moment,
@@ -595,8 +604,13 @@ class PlonePlugin {
         this.plugins.structureaddtocontext,
         this.plugins.plone,
         this.plugins.uglify
-      ])
+      ]
     };
+    if (config.sourcePath) {
+      this.production.plugins = this.production.plugins.concat(
+        this.plugins.templates.concat([ this.plugins.copy ])
+      );
+    }
   }
 
   parseRequireJsPaths() {
