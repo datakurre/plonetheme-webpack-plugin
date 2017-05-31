@@ -1,8 +1,14 @@
+const assert = require('assert');
+const extend = require('extend');
+const fetch = require('sync-request');
 const fs = require('fs');
 const glob = require('glob');
 const merge = require('webpack-merge');
+const mkdirp = require('mkdirp');
 const path = require('path');
+const process = require('process');
 const url = require('url');
+const vm = require('vm');
 const webpack = require('webpack');
 
 const CopyWebpackPlugin = require('copy-webpack-plugin');
@@ -10,541 +16,768 @@ const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WriteFileWebpackPlugin = require('write-file-webpack-plugin');
 
-const getLessVariables = require('./lib/getLessVariables');
-const getRequireJSConfig = require('./lib/getRequireJSConfig');
-const resolveResource = require('./lib/resolveResource');
 
-function AddToContextPlugin(condition, extras) {
-  this.condition = condition;
-  this.extras = extras || [];
-}
+/**
+ * Webpack context injection plugin to manage dynamic requires
+ * http://stackoverflow.com/questions/30065018/dynamically-require-an-aliased-module-using-webpack
+ */
+class AddToContextPlugin {
 
-// http://stackoverflow.com/questions/30065018/
-// dynamically-require-an-aliased-module-using-webpack
-AddToContextPlugin.prototype.apply = function (compiler) {
-  const condition = this.condition;
-  const extras = this.extras;
-  var newContext = false;
-  compiler.plugin('context-module-factory', function (cmf) {
-    cmf.plugin('after-resolve', function (items, callback) {
-      newContext = true;
-      return callback(null, items);
+  /**
+   * @constructor
+   * @param condition RegExp condition
+   * @param extras List of available modules modules
+   */
+  constructor(condition, extras) {
+    this.condition = condition;
+    this.extras = extras || [];
+  }
+
+  //noinspection JSUnusedGlobalSymbols
+  /**
+   * @param compiler Webpack compiler instance
+   */
+  apply(compiler) {
+    const condition = this.condition;
+    const extras = this.extras;
+    let newContext = false;
+    compiler.plugin('context-module-factory', (cmf) => {
+      cmf.plugin('after-resolve', (items, callback) => {
+        newContext = true;
+        return callback(null, items);
+      });
+      // this method is called for every path in the ctx
+      // we just add our extras the first call
+      cmf.plugin('alternatives', (items, callback) => {
+        if (newContext && items[0].context.match(condition)) {
+          newContext = false;
+          const alternatives = extras.map((extra) => {
+            return {
+              context: items[0].context,
+              request: extra
+            };
+          });
+          items.push.apply(items, alternatives);
+        }
+        return callback(null, items);
+      });
     });
-    // this method is called for every path in the ctx
-    // we just add our extras the first call
-    cmf.plugin('alternatives', function (items, callback) {
-      if (newContext && items[0].context.match(condition)) {
-        newContext = false;
-        var alternatives = extras.map(function (extra) {
-          return {
-            context: items[0].context,
-            request: extra
-          };
-        });
-        items.push.apply(items, alternatives);
-      }
-      return callback(null, items);
+  }
+}
+
+
+/**
+ * const PLONE = new PlonePlugin({
+ *     portalUrl: 'http://localhost:8080/' + SITENAME,
+ *     publicPath: PUBLICPATH,
+ *     sourcePath: PATHS.src,
+ *     debug: true
+ * });
+ */
+class PlonePlugin {
+  constructor(options) {
+    if (options.portalUrl) {
+      // Remove trailing slash from portalUrl
+      options.portalUrl = options.portalUrl.replace(/[/]+$/, '');
+    }
+
+    let config = this.config = extend({}, {
+      debug: false,
+      portalUrl: 'http://localhost:8080/Plone',
+      sourcePath: null
+    }, options);
+
+    extend(config, {
+      cachePath: path.join(process.cwd(), '.plone'),
+      portalPath: url.parse(config.portalUrl).pathname,
+      publicPath: '/Plone/++theme++webpack/',
+      momentLocales: [
+      ],
+      resolveExtensions: [
+        '',
+        '.js'
+      ],
+      ignore: config.sourcePath
+        ? [ path.join(path.basename(config.sourcePath), '?(*.js|*.jsx|*.css|*.less|*.scss)') ]
+        : [],
+      templates: config.sourcePath
+        ? glob.sync(path.join(config.sourcePath, '**', '?(*.html|manifest.cfg)'))
+        : []
+    }, options);
+
+    config = this.config = merge(config, {
+      portalBase: config.portalUrl.substr(
+        0, config.portalUrl.length - config.portalPath.length),
+      resolveAlias: this.parseRequireJsPaths(),
+      resolveMatches: [
+        /([+]{2}\w+[+]{2}[^+]*)$/
+      ],
+      variables: this.parseLessVariables()
+    }, options);
+
+    // Dynamically add templates into ignore globs
+    if (config.sourcePath) {
+      extend(config, {
+        'ignore': config.ignore.concat(
+            config.templates.map((filename) => {
+              return filename.substring(
+                config.sourcePath.length -
+                path.basename(config.sourcePath).length);
+            })
+        )
+      });
+    }
+
+    // Preload Moment JS locales
+    const self = this;
+    config.momentLocales.map((locale) => {
+      self.get('++plone++static/components/moment/locale/' + locale + '.js');
     });
-  });
-};
 
-// Plugin defaults, also available at PloneWebpackPlugin.defaults
-const defaults = {
-  portalUrl: 'http://localhost:8080/Plone',
-  sourcePath: null,
-  publicPath: '/Plone/++theme++webpack/',
-  resolveExtensions: ['.js', ''],
-  resolveBlacklist: [
-    'events',
-    'layouts-editor',
-    'plone',
-    'translate'
-  ],
-  resolveMapping: {
-    './jqtree-circle.png': './components/jqtree/jqtree-circle.png'
-  },
-  ignore: null,
-  debug: false
-};
+    if (config.debug) { console.log(config); }
 
-// Helper for choosing between given options and defaults
-function option(options, name, defaults) {
-  return options && options[name] ? options[name] : defaults[name];
-}
+    // Pre-configure loaders
+    this.rules = {
 
-// Helper for passing options query for webpack loaders
-function q(loader, query, portalUrl) {
-    return loader + "?" + JSON.stringify(query).replace(
-        // Trick webpack to resolve full portal paths (e.g. for fonts)
-        new RegExp(portalUrl + '/', 'g'), '');
-}
+      url: {
+        test: /\.(png|gif|jpg|otf|eot|svg|ttf|woff|woff2)(\?.*)?$/,
+        use: [
+          {
+            loader: 'url-loader',
+            options: { limit: 8192 }
+          }
+        ]
+      },
 
-function PloneWebpackPlugin(options) {
-  this.portalUrl = option(options, 'portalUrl', defaults);
-  this.resolveExtensions = option(options, 'resolveExtensions', defaults);
-  this.resolveBlacklist = option(options, 'resolveBlacklist', defaults);
-  this.resolveMapping = option(options, 'resolveMapping', defaults);
-  this.debug = option(options, 'debug', defaults);
+      extract: {
+        css: {
+          test: /\.css$/i,
+          use: ExtractTextPlugin.extract({
+            fallback: 'style-loader',
+            use: [
+              'css-loader'
+            ]
+          })
+        },
+        less: {
+          test: /\.less$/i,
+          use: ExtractTextPlugin.extract({
+            fallback: 'style-loader',
+            use: [
+              {
+                loader: 'css-loader'
+              },
+              {
+                loader: 'less-loader',
+                options: {
+                  globalVars: config.variables
+                }
+              }
+            ]
+          })
+        },
+        scss: {
+          test: /\.scss$/i,
+          use: ExtractTextPlugin.extract({
+            fallback: 'style-loader',
+            use: [
+              'css-loader',
+              'fast-sass-loader'
+            ]
+          })
+        },
+      },
 
-  const sourcePath = option(options, 'sourcePath', defaults);
-  const publicPath = option(options, 'publicPath', defaults);
-  const less = getLessVariables(this.portalUrl);
-  const config = getRequireJSConfig(this.portalUrl);
-
-  // List of theme templates to run through HTML webpack plugin
-  const basename = path.basename(sourcePath);
-  const templates = glob.sync(path.join(sourcePath, '**', '?(*.html|manifest.cfg)'));
-
-  // List of ignore globs to skips on copy plugin
-  const ignore = option(options, 'ignore', { ignore: [
-    path.join(basename, '?(*.js|*.jsx|*.css|*.less|*.scss)')
-  ]}).concat(templates.map(function(filename) {
-    return filename.substring(sourcePath.length - basename.length);
-  }));
-
-  // Pre-configure loaders
-  this.loaders = {
-
-    url: {
-      test: /\.(png|gif|jpg|otf|eot|svg|ttf|woff|woff2)(\?.*)?$/,
-      loader: 'url', query: { limit: 8192 }
-    },
-
-    extract: {
       css: {
         test: /\.css$/i,
-        loader: ExtractTextPlugin.extract(['css'])
+        use: [
+          'style-loader',
+          'css-loader'
+        ]
       },
+
       less: {
         test: /\.less$/i,
-        loader: ExtractTextPlugin.extract([
-          'css', q('less', { globalVars: less.globalVars },
-                   this.portalUrl)
-        ])
+        use: [
+          {
+            loader: 'style-loader'
+          },
+          {
+            loader: 'css-loader'
+          },
+          {
+            loader: 'less-loader',
+            options: {
+              globalVars: config.variables
+            }
+          },
+        ]
       },
+
       scss: {
         test: /\.scss$/i,
-        loader: ExtractTextPlugin.extract(['css', 'fast-sass'])
-      },
-    },
-
-    css: {
-      test: /\.css$/i,
-      loaders: ['style', 'css']
-    },
-
-    less: {
-      test: /\.less$/i,
-      loaders: [
-        'style', 'css', q('less', { globalVars: less.globalVars },
-                          this.portalUrl)
-      ]
-    },
-
-    scss: {
-      test: /\.scss$/i,
-      loaders: ['style', 'css', 'fast-sass']
-    },
-
-    shim: {
-
-      ace: {
-        test: /mockup\/texteditor\/pattern(.js)?$/,
-        loader: 'imports?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini'
+        use: [
+          'style-loader',
+          'css-loader',
+          'fast-sass-loader'
+        ]
       },
 
-      backbone: {
-        test: /backbone\.paginator(.js)?$/,
-        loader: 'imports?jQuery=jquery,_=underscore,Backbone=backbone'
-      },
+      shim: {
 
-      bootstraptransition : {
-        test: /bootstrap\/js\/transition(.js)?$/,
-        loader: 'imports?jQuery=jquery!exports?window.jQuery.support.transition'
-      },
+        ace: {
+          test: /mockup\/texteditor\/pattern(.js)?$/,
+          use: [
+            'imports-loader?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini'
+          ]
+        },
 
-      bootstrapcollapse: {
-        test: /bootstrap\/js\/collapse(.js)?$/,
-        loader: 'imports?jQuery=jquery'
-      },
+        backbone: {
+          test: /backbone\.paginator(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery,_=underscore,Backbone=backbone'
+          ]
+        },
 
-      bootstraptooltip: {
-        test: /bootstrap\/js\/tooltip(.js)?$/,
-        loader: 'imports?jQuery=jquery'
-      },
+        bootstraptransition : {
+          test: /bootstrap\/js\/transition(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery',
+            'exports-loader?window.jQuery.support.transition'
+          ]
+        },
 
-      bootstrapdropdown : {
-        test: /bootstrap\/js\/dropdown(.js)?$/,
-        loader: 'imports?jQuery=jquery'
-      },
+        bootstrapcollapse: {
+          test: /bootstrap\/js\/collapse(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery'
+          ]
+        },
 
-      bootstrapalert : {
-        test: /bootstrap\/js\/alert(.js)?$/,
-        loader: 'imports?jQuery=jquery'
-      },
+        bootstraptooltip: {
+          test: /bootstrap\/js\/tooltip(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery'
+          ]
+        },
 
-      jqtree: {
-        test: /jqtree\/(tree\.jquery|node|lib\/.*)(.js)?$/,
-        loader: 'imports?jQuery=jquery,$=jquery,this=>{jQuery:$}'
-      },
+        bootstrapdropdown : {
+          test: /bootstrap\/js\/dropdown(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery'
+          ]
+        },
 
-      recurrenceinput: {
-        test: /jquery\.recurrenceinput(.js)?$/,
-        loader: 'imports?jQuery=jquery,tmpl=jquery.tmpl,_overlay=resource-plone-app-jquerytools-js,_dateinput=resource-plone-app-jquerytools-dateinput-js'
-      },
+        bootstrapalert : {
+          test: /bootstrap\/js\/alert(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery'
+          ]
+        },
 
-      tinymce: {
-        test: /tinymce(.js)?$/,
-        loader: 'imports?document=>window.document,this=>window!exports?window.tinymce'
-      },
+        jqtree: {
+          test: /jqtree\/(tree\.jquery|node|lib\/.*)(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery,$=jquery,this=>{jQuery:$}'
+          ]
+        },
 
-      tinymceplugins: {
-        test: /tinymce\/plugins.*(.js)?$/,
-        loader: 'imports?tinymce,this=>{tinymce:tinymce}'
-      },
+        recurrenceinput: {
+          test: /jquery\.recurrenceinput(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery,tmpl=jquery.tmpl,_overlay=resource-plone-app-jquerytools-js,_dateinput=resource-plone-app-jquerytools-dateinput-js'
+          ]
+        },
 
-      jqueryeventdrop: {
-        test: /jquery\.event\.drop(.js)?$/,
-        loader: 'imports?jQuery=jquery!exports?jQuery.drop'
-      },
+        tinymce: {
+          test: /tinymce(.js)?$/,
+          use: [
+            'imports-loader?document=>window.document,this=>window',
+            'exports-loader?window.tinymce'
+          ]
+        },
 
-      jqueryeventdrag: {
-        test: /jquery\.event\.drag(.js)?$/,
-        loader: 'imports?jQuery=jquery!exports?jQuery.drag'
-      },
+        tinymceplugins: {
+          test: /tinymce\/plugins.*(.js)?$/,
+          use: [
+            'imports-loader?tinymce,this=>{tinymce:tinymce}'
+          ]
+        },
 
-      jquerytmpl: {
-        test: /jquery\.tmpl(.js)?$/,
-        loader: 'imports?jQuery=jquery,$=jquery!exports?jQuery.tmpl'
-      },
+        jqueryeventdrop: {
+          test: /jquery\.event\.drop(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery',
+            'exports-loader?jQuery.drop'
+          ]
+        },
 
-      jquerycookie: {
-        test: /jquery\.cookie(.js)?$/,
-        loader: 'imports?jQuery=jquery,$=jquery!exports?jQuery.cookie'
-      },
+        jqueryeventdrag: {
+          test: /jquery\.event\.drag(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery',
+            'exports-loader?jQuery.drag'
+          ]
+        },
 
-      mockuputils: {
-        test: /mockupjs\/utils/,
-        loader: 'imports?jQuery=jquery,$=jquery'
-      },
+        jquerytmpl: {
+          test: /jquery\.tmpl(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery,$=jquery',
+            'exports-loader?jQuery.tmpl'
+          ]
+        },
 
-      // Hack to work around webpack confusing fallback jquery define
-      plone: {
-        test: /\+\+resource\+\+plone(.js)?$/,
-        loader: 'imports?__WEBPACK_LOCAL_MODULE_0__=jquery'
-      },
+        jquerycookie: {
+          test: /jquery\.cookie(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery,$=jquery',
+            'exports-loader?jQuery.cookie'
+          ]
+        },
 
-      jquerytools: {
-        test: /jquery\.tools\.overlay(.js)?$/,
-        loader: 'imports?jQuery=jquery,$=jquery!exports?$.tabs'
-      },
+        mockuputils: {
+          test: /mockupjs\/utils/,
+          use: [
+            'imports-loader?jQuery=jquery,$=jquery'
+          ]
+        },
 
-      select2: {
-        test: /select2\/select2(.min)?(.js)?$/,
-        loader: 'imports?jQuery=jquery'
-      },
+        structure: {
+          test: /structure\/js\//,
+          use: [
+            'imports-loader?$=jquery'
+          ]
+        },
 
-      ploneformgen: {
-        test: /pfgquickedit\/quickedit(.js)?$/,
-        loader: 'imports?requirejs=>define,_tabs=resource-plone-app-jquerytools-js'
-      },
+        // Hack to work around webpack confusing fallback jquery define
+        plone: {
+          test: /\+\+resource\+\+plone(.js)?$/,
+          use: [
+            'imports-loader?__WEBPACK_LOCAL_MODULE_0__=jquery'
+          ]
+        },
 
-      patternslib: {
-        test: /patternslib\/src\/core\/utils(.js)?$/,
-        loader: 'imports?_=underscore'
-      }
+        jquerytools: {
+          test: /jquery\.tools\.overlay(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery,$=jquery',
+            'exports-loader?$.tabs'
+          ]
+        },
 
-    }
-  };
+        select2: {
+          test: /select2\/select2(.min)?(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery'
+          ]
+        },
 
-  // Pre-configure plugins
-  this.plugins = {
+        ploneformgen: {
+          test: /pfgquickedit\/quickedit(.js)?$/,
+          use: [
+            'imports-loader?requirejs=>define,_tabs=resource-plone-app-jquerytools-js'
+          ]
+        },
 
-    plone: this,
-
-    hrm: new webpack.HotModuleReplacementPlugin(),
-
-    extract: new ExtractTextPlugin(
-      '[name].[chunkhash].css', { allChunks: true }
-    ),
-
-    uglify: new webpack.optimize.UglifyJsPlugin({
-      compress: { warnings: false }
-    }),
-
-    defineproduction: new webpack.DefinePlugin({
-      'process.env.NODE_ENV': JSON.stringify('production')
-    }),
-
-    commonschunk: new webpack.optimize.CommonsChunkPlugin(
-      'commons.' + (new Date()).getTime() + '.js'
-    ),
-
-    // Plone defaults to moment built with locales
-    moment: new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
-
-    jqtree: new webpack.NormalModuleReplacementPlugin(
-      /^\.\/jqtree-circle\.png$/, function(ob) {
-         ob.request = '++plone++static/components/jqtree/jqtree-circle.png';
-      }
-    ),
-
-    brokenrelativeresource: new webpack.NormalModuleReplacementPlugin(
-      new RegExp('^\\.\\./[^+]*\\+\\+resource\\+\\+'), function(ob) {
-         ob.request = ob.request.replace(/^[\.\/]+/, '');
-      }
-    ),
-
-    // Fix dynamic requires in structure pattern
-    // https://github.com/plone/mockup/commit/89de866dff89a455bd4102c84a3fa8f9a0bcc34b
-    structurecontextreplacement: new webpack.ContextReplacementPlugin(
-      /^\.$|mockup\/structure|mockup\/patterns\/structure/, function(ob) {
-        if (ob.request && ob.request.match('^\.$') &&
-            ob.context && ob.context.match('mockup\/structure')) {
-          // resolve from Plone
-          console.log("Error: Can properly resolve structure pattern only from a file system checkout. .");
-        } else if (ob.resource &&
-                   ob.resource.match(/mockup\/patterns\/structure/)) {
-          // resolve from FS
-          ob.regExp = /^\.\/.*$|^mockup-patterns-structure-url\/.*$/;
+        patternslib: {
+          test: /patternslib\/src\/core\/utils(.js)?$/,
+          use: [
+            'imports-loader?_=underscore'
+          ]
         }
       }
-    ),
-    structureaddtocontext: new AddToContextPlugin(
-      /mockup\/structure|mockup\/patterns\/structure/, [
-        'mockup-patterns-structure-url/js/actions',
-        'mockup-patterns-structure-url/js/actionmenu',
-        'mockup-patterns-structure-url/js/navigation',
-        'mockup-patterns-structure-url/js/collections/result'
+    };
+
+    // Pre-configure plugins
+    this.plugins = {
+
+      plone: this,
+
+      hrm: new webpack.HotModuleReplacementPlugin(),
+
+      extract: new ExtractTextPlugin({
+        filename: '[name].[chunkhash].css',
+        allChunks: true
+      }),
+
+      uglify: new webpack.optimize.UglifyJsPlugin(),
+
+      defineproduction: new webpack.DefinePlugin({
+        'process.env.NODE_ENV': JSON.stringify('production')
+      }),
+
+      commonschunk: new webpack.optimize.CommonsChunkPlugin(
+        'commons.' + (new Date()).getTime() + '.js'
+      ),
+
+      // Plone defaults to moment built with locales
+      moment: config.momentLocales.length
+         ? new webpack.ContextReplacementPlugin(
+             /moment[\\\/]locale$/,
+             new RegExp('^\\.\\/(' + config.momentLocales.join('|') + ')$'))
+         : new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+
+      jqtree: new webpack.NormalModuleReplacementPlugin(
+        /^\.\/jqtree-circle\.png$/, (ob) => {
+          ob.request = '++plone++static/components/jqtree/jqtree-circle.png';
+        }
+      ),
+
+      brokenrelativeresource: new webpack.NormalModuleReplacementPlugin(
+        new RegExp('^\\.\\./[^+]*\\+\\+resource\\+\\+'), (ob) => {
+          ob.request = ob.request.replace(/^[\.\/]+/, '');
+        }
+      ),
+
+      // Fix dynamic requires in structure pattern
+      // https://github.com/plone/mockup/commit/89de866dff89a455bd4102c84a3fa8f9a0bcc34b
+      structurecontextreplacement: new webpack.ContextReplacementPlugin(
+        /^\.$|mockup\/structure|mockup\/patterns\/structure/, (ob) => {
+          ob.regExp = /^\.\/.*$|^mockup-patterns-structure-url\/.*$/;
+        }
+      ),
+      structureaddtocontext: new AddToContextPlugin(
+        /mockup\/structure|mockup\/patterns\/structure/, [
+          'mockup-patterns-structure-url/js/actions',
+          'mockup-patterns-structure-url/js/actionmenu',
+          'mockup-patterns-structure-url/js/navigation',
+          'mockup-patterns-structure-url/js/collections/result'
+        ]
+      ),
+
+      // Write templates
+      write: new WriteFileWebpackPlugin(),
+
+      copy: config.sourcePath
+        ? new CopyWebpackPlugin(
+            [ { from: path.join(config.sourcePath, '..'), to: '..' } ],
+            { ignore: config.ignore })
+        : undefined,
+
+      templates: config.sourcePath
+        ? config.templates.map(function(name) {
+            return new HtmlWebpackPlugin({
+              filename: name.substring(config.sourcePath.replace(/\/*$/, '/').length),
+              template: name,
+              chunksSortMode: function(a, b) {
+                return a.names[0].match(/^commons/) ? -1
+                  : b.names[0].match(/^commons/) ? 1
+                  : a.names[0] > b.names[0] ? 1 : -1;
+              },
+              inject: false
+            })
+          })
+        : undefined,
+
+      watchignore: new webpack.WatchIgnorePlugin([ config.cachePath ])
+    };
+
+    this.alias = merge(config.resolveAlias, {
+      'ace': 'brace',
+      'moment': '++plone++static/components/moment/moment'
+    });
+
+    this.development = {
+      devtool: 'eval',
+      resolve: {
+        alias: this.alias
+      },
+      resolveLoader: {
+        alias: {
+          text: 'text-loader'
+        }
+      },
+      module: {
+        rules: [
+          this.rules.url,
+          this.rules.css,
+          this.rules.less,
+          this.rules.scss,
+          this.rules.shim.ace,
+          this.rules.shim.backbone,
+          this.rules.shim.bootstrapalert,
+          this.rules.shim.bootstrapcollapse,
+          this.rules.shim.bootstrapdropdown,
+          this.rules.shim.bootstraptooltip,
+          this.rules.shim.bootstraptransition,
+          this.rules.shim.jqtree,
+          this.rules.shim.jquerycookie,
+          this.rules.shim.jqueryeventdrag,
+          this.rules.shim.jqueryeventdrop,
+          this.rules.shim.jquerytmpl,
+          this.rules.shim.jquerytools,
+          this.rules.shim.mockuputils,
+          this.rules.shim.structure,
+          this.rules.shim.select2,
+          this.rules.shim.patternslib,
+          this.rules.shim.plone,
+          this.rules.shim.ploneformgen,
+          this.rules.shim.recurrenceinput,
+          this.rules.shim.tinymce,
+          this.rules.shim.tinymceplugins
+        ]
+      },
+      devServer: {
+        hot: true,
+        inline: true,
+        stats: 'errors-only',
+        host: 'localhost',
+        port: '9000'
+      },
+      output: {
+        pathinfo: true,
+        filename: 'bundle.js',
+        publicPath: config.publicPath
+      },
+      plugins: [
+        this.plugins.hrm,
+        this.plugins.moment,
+        this.plugins.jqtree,
+        this.plugins.brokenrelativeresource,
+        this.plugins.structurecontextreplacement,
+        this.plugins.structureaddtocontext,
+        this.plugins.plone,
+        this.plugins.write,
+        this.plugins.watchignore
       ]
-    ),
+    };
+    if (config.sourcePath) {
+      this.development.plugins = this.development.plugins.concat(
+        this.plugins.templates.concat([ this.plugins.copy ])
+      );
+    }
 
-    // Write templates
-    write: new WriteFileWebpackPlugin(),
-
-    copy: new CopyWebpackPlugin(
-      [{ from: path.join(sourcePath, '..'), to: '..' }], { ignore: ignore }),
-
-    templates: templates.map(function(name) {
-      return new HtmlWebpackPlugin({
-        filename: name.substring(sourcePath.replace(/\/*$/, '/').length),
-        template: name,
-        chunksSortMode: function(a, b) {
-          return a.names[0].match(/^commons/) ? -1
-            : b.names[0].match(/^commons/) ? 1
-            : a.names[0] > b.names[0] ? 1 : -1;
-        },
-        inject: false
-      })
-    })
-
-  };
-
-  this.alias = merge(config.paths, {
-    'ace': 'brace'
-  });
-
-  this.development = {
-    devtool: 'eval',
-    resolve: {
-      alias: this.alias
-    },
-    module: {
-      loaders: [
-        this.loaders.url,
-        this.loaders.css,
-        this.loaders.less,
-        this.loaders.scss,
-        this.loaders.shim.ace,
-        this.loaders.shim.backbone,
-        this.loaders.shim.bootstrapalert,
-        this.loaders.shim.bootstrapcollapse,
-        this.loaders.shim.bootstrapdropdown,
-        this.loaders.shim.bootstraptooltip,
-        this.loaders.shim.bootstraptransition,
-        this.loaders.shim.jqtree,
-        this.loaders.shim.jquerycookie,
-        this.loaders.shim.jqueryeventdrag,
-        this.loaders.shim.jqueryeventdrop,
-        this.loaders.shim.jquerytmpl,
-        this.loaders.shim.jquerytools,
-        this.loaders.shim.mockuputils,
-        this.loaders.shim.select2,
-        this.loaders.shim.patternslib,
-        this.loaders.shim.plone,
-        this.loaders.shim.ploneformgen,
-        this.loaders.shim.recurrenceinput,
-        this.loaders.shim.tinymce,
-        this.loaders.shim.tinymceplugins
+    this.production = {
+      resolve: {
+        alias: this.alias
+      },
+      resolveLoader: {
+        alias: {
+          text: 'text-loader'
+        }
+      },
+      module: {
+        exprContextCritical: false,
+        rules: [
+          this.rules.url,
+          this.rules.extract.css,
+          this.rules.extract.less,
+          this.rules.extract.scss,
+          this.rules.shim.ace,
+          this.rules.shim.backbone,
+          this.rules.shim.bootstrapalert,
+          this.rules.shim.bootstrapcollapse,
+          this.rules.shim.bootstrapdropdown,
+          this.rules.shim.bootstraptooltip,
+          this.rules.shim.bootstraptransition,
+          this.rules.shim.jqtree,
+          this.rules.shim.jquerycookie,
+          this.rules.shim.jqueryeventdrag,
+          this.rules.shim.jqueryeventdrop,
+          this.rules.shim.jquerytmpl,
+          this.rules.shim.jquerytools,
+          this.rules.shim.mockuputils,
+          this.rules.shim.structure,
+          this.rules.shim.select2,
+          this.rules.shim.patternslib,
+          this.rules.shim.plone,
+          this.rules.shim.ploneformgen,
+          this.rules.shim.recurrenceinput,
+          this.rules.shim.tinymce,
+          this.rules.shim.tinymceplugins
+        ]
+      },
+      output: {
+        filename: '[name].[chunkhash].js',
+        chunkFilename: '[chunkhash].js',
+        publicPath: config.publicPath
+      },
+      plugins: [
+        this.plugins.commonschunk,
+        this.plugins.defineproduction,
+        this.plugins.extract,
+        this.plugins.moment,
+        this.plugins.jqtree,
+        this.plugins.brokenrelativeresource,
+        this.plugins.structurecontextreplacement,
+        this.plugins.structureaddtocontext,
+        this.plugins.plone,
+        this.plugins.uglify
       ]
-    },
-    devServer: {
-      hot: true,
-      inline: true,
-      progress: true,
-      stats: 'errors-only',
-      host: 'localhost',
-      port: '9000'
-    },
-    output: {
-      pathinfo: true,
-      filename: 'bundle.js',
-      publicPath: publicPath
-    },
-    plugins: this.plugins.templates.concat([
-      this.plugins.copy,
-      this.plugins.hrm,
-      this.plugins.moment,
-      this.plugins.jqtree,
-      this.plugins.brokenrelativeresource,
-      this.plugins.structurecontextreplacement,
-      this.plugins.structureaddtocontext,
-      this.plugins.plone,
-      this.plugins.write
-    ])
-  };
+    };
+    if (config.sourcePath) {
+      this.production.plugins = this.production.plugins.concat(
+        this.plugins.templates.concat([ this.plugins.copy ])
+      );
+    }
+  }
 
-  this.production = {
-    resolve: {
-      alias: this.alias
-    },
-    module: {
-      exprContextCritical: false,
-      loaders: [
-        this.loaders.url,
-        this.loaders.extract.css,
-        this.loaders.extract.less,
-        this.loaders.extract.scss,
-        this.loaders.shim.ace,
-        this.loaders.shim.backbone,
-        this.loaders.shim.bootstrapalert,
-        this.loaders.shim.bootstrapcollapse,
-        this.loaders.shim.bootstrapdropdown,
-        this.loaders.shim.bootstraptooltip,
-        this.loaders.shim.bootstraptransition,
-        this.loaders.shim.jqtree,
-        this.loaders.shim.jquerycookie,
-        this.loaders.shim.jqueryeventdrag,
-        this.loaders.shim.jqueryeventdrop,
-        this.loaders.shim.jquerytmpl,
-        this.loaders.shim.jquerytools,
-        this.loaders.shim.mockuputils,
-        this.loaders.shim.select2,
-        this.loaders.shim.patternslib,
-        this.loaders.shim.plone,
-        this.loaders.shim.ploneformgen,
-        this.loaders.shim.recurrenceinput,
-        this.loaders.shim.tinymce,
-        this.loaders.shim.tinymceplugins
-      ]
-    },
-    output: {
-      filename: '[name].[chunkhash].js',
-      chunkFilename: '[chunkhash].js',
-      publicPath: publicPath
-    },
-    plugins: this.plugins.templates.concat([
-      this.plugins.commonschunk,
-      this.plugins.copy,
-      this.plugins.defineproduction,
-      this.plugins.extract,
-      this.plugins.moment,
-      this.plugins.jqtree,
-      this.plugins.brokenrelativeresource,
-      this.plugins.structurecontextreplacement,
-      this.plugins.structureaddtocontext,
-      this.plugins.plone,
-      this.plugins.uglify
-    ])
-  };
-}
+  parseRequireJsPaths() {
+    const mockup = {};
 
-PloneWebpackPlugin.prototype.defaults = defaults;
-
-// Webpack virtual file system path below the CWD
-function ns(path) {
-  path = path ? path : '';
-  return (process.cwd() + '/@/' + path).replace(/\/+/g, '/');
-}
-
-PloneWebpackPlugin.prototype.apply = function(compiler) {
-  const portalUrl = this.portalUrl;
-  const portalPath = url.parse(this.portalUrl).pathname;
-  const portalBase = portalUrl.substr(0, portalUrl.length - portalPath.length);
-  const resolveExtensions = this.resolveExtensions;
-  const resolveBlacklist = this.resolveBlacklist;
-  const resolveMapping = this.resolveMapping;
-  const debug = this.debug;
-
-  // Resolve files (images, LESS files, etc) from Plone
-  compiler.resolvers.normal.plugin('file', function(data, callback) {
-    const this_ = this;
-    const request = data.request.replace(/:\/+/, '://');
-
-    var path_ = url.resolve(data.path + '/', request);
-    var href;
-
-    // Skip built-in modules and existing filesystem paths
-    if (!data.request.length || fs.existsSync(request)) {
-      callback();
-
-    // Resolve files with full Plone path
-    } else if (request.startsWith('./' + portalBase)) {
-      href = portalBase + request.substring(
-          2 + portalBase.length).replace(/\/+/g, '/');
-      resolveResource(href, resolveExtensions, this_, callback, debug);
-
-    // Resolve files with ++-starting path (most probably a Plone resources)
-    } else if (request.startsWith('./++')) {
-      href = portalUrl + '/' + request.substring(2);
-      resolveResource(href, resolveExtensions, this_, callback, debug);
-
-    // Resolve known missing files
-    } else if (request !== 'LICENSE' && request.match(/^\.\/[^\/]+$/) &&
-      fs.existsSync(path.join(__dirname, 'static', request))) {
-
-      // - query.recurrenceinput.css, bundled with CMFPlone, references
-      //   files next.gif, prev.gif and pb_close.png not bundled with CMFPlone
-
-      this_.doResolve('result', {
-        path: path.join(__dirname, 'static', request),
-        query: data.query,
-        file: true,
-        resolved: true
-      }, callback);
-
-    // Resolve files with Plone context + relative path
-    } else if (path_.startsWith(ns(portalPath)) ||
-               path_.startsWith(ns('++'))) {
-      if (resolveMapping[request] !== undefined) {
-        href = url.resolve(portalUrl, url.resolve(
-          data.path + '/', resolveMapping[request]
-        ).substring(ns().length));
-      } else {
-        href = url.resolve(portalUrl, path_.substring(ns().length));
+    mockup.window = mockup;
+    mockup.requirejs = {
+      config: (config) => {
+        mockup.requirejs.config = config;
       }
-      resolveResource(href, resolveExtensions, this_, callback, debug);
+    };
 
-    // Fallback to the rest of Webpack resolver chain
-    } else {
-      callback();
+    let body, context, filename, script;
+
+    filename = this.get('config.js');
+    body = fs.readFileSync(filename, { encoding: 'utf-8' });
+    body = body.replace('PORTAL_URL', "'" + this.config.portalUrl + "'");
+
+    context = vm.createContext(mockup);
+    script = new vm.Script(body);
+    script.runInContext(context);
+
+    return mockup.requirejs.config.paths;
+  }
+
+  parseLessVariables() {
+    const mockup = {};
+
+    mockup.window = mockup;
+
+    let body, context, filename, script;
+
+    filename = this.get('less-variables.js');
+    body = fs.readFileSync(filename, { encoding: 'utf-8' });
+
+    // normalize " escaping to ' fix issue where passing LESS variables
+    // in less-loader query failed
+    body = body.replace(
+      /'"/gm,   '"\'').replace(   // '"  => "'
+      /"',/gm,  '\'",').replace(  // "', => '",
+      /\\"/gm, '\''); //          // \"  => '
+
+    // remove baseUrl from URLs
+    body = body.replace(new RegExp(this.config.portalUrl + '/', 'g'), '');
+
+    context = vm.createContext(mockup);
+    script = new vm.Script(body);
+    script.runInContext(context);
+
+    return mockup.less.globalVars;
+  };
+
+  match(path_) {
+    if (path_) {
+      for (let i = 0; i < this.config.resolveMatches.length; i++) {
+        let match = path_.match(this.config.resolveMatches[i]);
+        if (match) {
+          return match[1];
+        }
+      }
     }
-  });
+  }
 
-  // Resolve JS modules from Plone
-  compiler.resolvers.normal.plugin('module', function(data, callback) {
-    const this_ = this;
-    const href = portalUrl + '/' + data.request;
+  get(path_, force=false) {
+    const url_ = this.config.portalUrl + '/' + path_.replace(/^[./]+/, '');
 
-    // Skip known false positive Plone entry points
-    if (resolveBlacklist.indexOf(data.request) > -1) {
-      callback();
+    let filename = path.join(
+      this.config.cachePath,
+      path.join.apply(null, path_.split('/'))
+    );
 
-    // Resolve from Plone
-    } else {
-      resolveResource(href, resolveExtensions, this_, callback, debug);
+    if (!force) {
+      for (let i = 0; i < this.config.resolveExtensions.length; i++) {
+        let extension = this.config.resolveExtensions[i];
+        if (fs.existsSync(filename + extension)) {
+          filename = filename + extension;
+          if (this.config.debug) { console.log('Found: ' + filename); }
+          return filename;
+        }
+      }
     }
-  });
-};
 
-module.exports = PloneWebpackPlugin;
+    for (let i = 0; i < this.config.resolveExtensions.length; i++) {
+      let extension = this.config.resolveExtensions[i];
+      let response = fetch('GET', url_ + extension);
+      if (response.statusCode === 200) {
+        let data = response.getBody();
+        filename = filename + extension;
+        mkdirp.sync(path.dirname(filename));
+        fs.writeFileSync(filename, data, { encoding: null });
+        if (this.config.debug) { console.log('Plone: ' + url_); }
+        if (this.config.debug) { console.log('Saved: ' + filename); }
+        return filename;
+      }
+    }
+  }
+
+  apply(compiler) {
+    const self = this;
+    const seen = [];
+    const resolved = {};
+
+    compiler.plugin('compilation', function (compilation) {
+
+      // Resolve files from Plone
+      compilation.resolvers.normal.plugin('file', function (data, callback) {
+        if (data.__plone) { return callback(); }
+
+        // Match against PlonePlugin resolveMatches
+        let match = self.match(data.path) || self.match(data.request);
+
+        // XXX: query.recurrenceinput.css, bundled with CMFPlone, references
+        // missing files next.gif, prev.gif and pb_close.png
+        if (['next.gif', 'prev.gif', 'pb_close.png']
+            .indexOf(path.basename(data.path)) >= 0) {
+          match = path.basename(data.path);
+          resolved[match] = path.join(__dirname, 'static', match);
+        }
+
+        // Download matches from Plone
+        if (match && !resolved[match]) {
+          if (seen.indexOf(data.path) === -1) {
+            seen.push(data.path);
+            resolved[match] = self.get(match);
+          }
+        }
+
+        // Report downloads resolved
+        if (match && resolved[match]) {
+          return this.doResolve('resolved', extend(data, {
+            path: resolved[match],
+            __plone: true
+          }), 'Plone:' + match, callback, true);
+        }
+
+        // Fallback to default resolvers
+        return callback();
+      });
+
+      // Resolve JS modules from Plone
+      compiler.resolvers.normal.plugin('module', function(data, callback) {
+        if (data.__plone) { return callback(); }
+
+        // Match against PlonePlugin resolveMatches
+        let match = self.match(data.request);
+
+        // Download matches from Plone
+        if (match && !resolved[match]) {
+          if (seen.indexOf(data.path) === -1) {
+            seen.push(data.path);
+            resolved[match] = self.get(match);
+          }
+        }
+
+        // Report downloads resolved
+        if (match && resolved[match]) {
+          return this.doResolve('resolved', extend(data, {
+            path: resolved[match],
+            __plone: true
+          }), 'Plone:' + match, callback, true);
+        }
+
+        // Fallback to default resolvers
+        return callback();
+      });
+    });
+  }
+}
+
+module.exports = PlonePlugin;
