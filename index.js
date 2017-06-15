@@ -103,14 +103,17 @@ class PlonePlugin {
       templates: config.sourcePath
         ? glob.sync(path.join(config.sourcePath, '**', '?(*.html|manifest.cfg)'))
         : []
-    }, options);
+    }, options, {
+      resolveMatches: []  // ensure empty before merge
+    });
 
     config = this.config = merge(config, {
       portalBase: config.portalUrl.substr(
         0, config.portalUrl.length - config.portalPath.length),
       resolveAlias: this.parseRequireJsPaths(),
       resolveMatches: [
-        /([+]{2}\w+[+]{2}[^+]*)$/
+        /([+]{2}\w+[+]{2}[^+]*)$/,
+        /(collective\.js\.jqueryui\.custom\.min.*)/
       ],
       variables: this.parseLessVariables()
     }, options);
