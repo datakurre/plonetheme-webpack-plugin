@@ -534,20 +534,22 @@ class PlonePlugin {
         publicPath: config.publicPath
       },
       plugins: [
-        this.plugins.hrm,
-        this.plugins.moment,
-        this.plugins.jqtree,
         this.plugins.brokenrelativeresource,
-        this.plugins.structurecontextreplacement,
-        this.plugins.structureaddtocontext,
+        this.plugins.hrm,
+        this.plugins.jqtree,
+        this.plugins.moment,
         this.plugins.plone,
-        this.plugins.write,
+        this.plugins.structureaddtocontext,
+        this.plugins.structurecontextreplacement,
         this.plugins.watchignore
       ]
     };
     if (config.sourcePath) {
       this.development.plugins = this.development.plugins.concat(
-        this.plugins.templates.concat([ this.plugins.copy ])
+        this.plugins.templates.concat([
+          this.plugins.copy,
+          this.plugins.write
+        ])
       );
     }
 
@@ -597,21 +599,23 @@ class PlonePlugin {
         publicPath: config.publicPath
       },
       plugins: [
+        this.plugins.brokenrelativeresource,
         this.plugins.commonschunk,
         this.plugins.defineproduction,
         this.plugins.extract,
-        this.plugins.moment,
         this.plugins.jqtree,
-        this.plugins.brokenrelativeresource,
-        this.plugins.structurecontextreplacement,
-        this.plugins.structureaddtocontext,
+        this.plugins.moment,
         this.plugins.plone,
+        this.plugins.structureaddtocontext,
+        this.plugins.structurecontextreplacement,
         this.plugins.uglify
       ]
     };
     if (config.sourcePath) {
       this.production.plugins = this.production.plugins.concat(
-        this.plugins.templates.concat([ this.plugins.copy ])
+        this.plugins.templates.concat([
+          this.plugins.copy
+        ])
       );
     }
   }
