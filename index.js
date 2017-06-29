@@ -206,7 +206,10 @@ class PlonePlugin {
             loader: 'style-loader'
           },
           {
-            loader: 'css-loader'
+            loader: 'css-loader',
+            options: {
+              sourceMap: true
+            }
           },
           {
             loader: 'less-loader',
@@ -221,7 +224,7 @@ class PlonePlugin {
         test: /\.scss$/i,
         use: [
           'style-loader',
-          'css-loader',
+          'css-loader?sourceMap',
           'fast-sass-loader'
         ]
       },
