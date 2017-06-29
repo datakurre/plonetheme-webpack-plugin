@@ -232,7 +232,7 @@ class PlonePlugin {
       shim: {
 
         ace: {
-          test: /mockup\/texteditor\/pattern(.js)?$/,
+          test: /mockup[\\/]texteditor[\\/]pattern(.js)?$/,
           use: [
             'imports-loader?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini'
           ]
@@ -246,7 +246,7 @@ class PlonePlugin {
         },
 
         bootstraptransition : {
-          test: /bootstrap\/js\/transition(.js)?$/,
+          test: /bootstrap[\\/]js[\\/]transition(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery',
             'exports-loader?window.jQuery.support.transition'
@@ -254,35 +254,35 @@ class PlonePlugin {
         },
 
         bootstrapcollapse: {
-          test: /bootstrap\/js\/collapse(.js)?$/,
+          test: /bootstrap[\\/]js[\\/]collapse(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery'
           ]
         },
 
         bootstraptooltip: {
-          test: /bootstrap\/js\/tooltip(.js)?$/,
+          test: /bootstrap[\\/]js[\\/]tooltip(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery'
           ]
         },
 
         bootstrapdropdown : {
-          test: /bootstrap\/js\/dropdown(.js)?$/,
+          test: /bootstrap[\\/]js[\\/]dropdown(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery'
           ]
         },
 
         bootstrapalert : {
-          test: /bootstrap\/js\/alert(.js)?$/,
+          test: /bootstrap[\\/]js[\\/]alert(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery'
           ]
         },
 
         jqtree: {
-          test: /jqtree\/(tree\.jquery|node|lib\/.*)(.js)?$/,
+          test: /jqtree[\\/](tree\.jquery|node|lib[\\/].*)(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery,$=jquery,this=>{jQuery:$}'
           ]
@@ -304,7 +304,7 @@ class PlonePlugin {
         },
 
         tinymceplugins: {
-          test: /tinymce\/plugins.*(.js)?$/,
+          test: /tinymce[\\/](themes|plugins)[\\/]/,
           use: [
             'imports-loader?tinymce,this=>{tinymce:tinymce}'
           ]
@@ -343,14 +343,14 @@ class PlonePlugin {
         },
 
         mockuputils: {
-          test: /mockupjs\/utils/,
+          test: /mockupjs[\\/]utils/,
           use: [
             'imports-loader?jQuery=jquery,$=jquery'
           ]
         },
 
         structure: {
-          test: /structure\/js\//,
+          test: /structure[\\/]js[\\/]/,
           use: [
             'imports-loader?$=jquery'
           ]
@@ -373,21 +373,21 @@ class PlonePlugin {
         },
 
         select2: {
-          test: /select2\/select2(.min)?(.js)?$/,
+          test: /select2[\\/]select2(.min)?(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery'
           ]
         },
 
         ploneformgen: {
-          test: /pfgquickedit\/quickedit(.js)?$/,
+          test: /pfgquickedit[\\/]quickedit(.js)?$/,
           use: [
             'imports-loader?requirejs=>define,_tabs=resource-plone-app-jquerytools-js'
           ]
         },
 
         patternslib: {
-          test: /patternslib\/src\/core\/utils(.js)?$/,
+          test: /patternslib[\\/]src[\\/]core[\\/]utils(.js)?$/,
           use: [
             'imports-loader?_=underscore'
           ]
@@ -420,31 +420,31 @@ class PlonePlugin {
       // Plone defaults to moment built with locales
       moment: config.momentLocales.length
          ? new webpack.ContextReplacementPlugin(
-             /moment[\\\/]locale$/,
+             /moment[\\/]locale$/,
              new RegExp('^\\.\\/(' + config.momentLocales.join('|') + ')$'))
-         : new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+         : new webpack.IgnorePlugin(/^\.[\\/]locale$/, /moment$/),
 
       jqtree: new webpack.NormalModuleReplacementPlugin(
-        /^\.\/jqtree-circle\.png$/, (ob) => {
+        /^\.[\\/]jqtree-circle\.png$/, (ob) => {
           ob.request = '++plone++static/components/jqtree/jqtree-circle.png';
         }
       ),
 
       brokenrelativeresource: new webpack.NormalModuleReplacementPlugin(
-        new RegExp('^\\.\\./[^+]*\\+\\+resource\\+\\+'), (ob) => {
-          ob.request = ob.request.replace(/^[\.\/]+/, '');
+        new RegExp('^\\.\\.[\\\\/][^+]*\\+\\+resource\\+\\+'), (ob) => {
+          ob.request = ob.request.replace(/^[.\/]+/, '');
         }
       ),
 
       // Fix dynamic requires in structure pattern
       // https://github.com/plone/mockup/commit/89de866dff89a455bd4102c84a3fa8f9a0bcc34b
       structurecontextreplacement: new webpack.ContextReplacementPlugin(
-        /^\.$|mockup\/structure|mockup\/patterns\/structure/, (ob) => {
-          ob.regExp = /^\.\/.*$|^mockup-patterns-structure-url\/.*$/;
+        /^\.$|mockup[\\/]structure|mockup[\\/]patterns[\\/]structure/, (ob) => {
+          ob.regExp = /^\.[\\/].*$|^mockup-patterns-structure-url[\\/].*$/;
         }
       ),
       structureaddtocontext: new AddToContextPlugin(
-        /mockup\/structure|mockup\/patterns\/structure/, [
+        /mockup[\\/]structure|mockup[\\/]patterns[\\/]structure/, [
           'mockup-patterns-structure-url/js/actions',
           'mockup-patterns-structure-url/js/actionmenu',
           'mockup-patterns-structure-url/js/navigation',
