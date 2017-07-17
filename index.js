@@ -288,6 +288,13 @@ class PlonePlugin {
           ]
         },
 
+        jqtreecontextmenu: {
+          test: /jqTreeContextMenu(.js)?$/,
+          use: [
+            'imports-loader?jQuery=jquery,$=jquery,this=>{jQuery:$},jqtree'
+          ]
+        },
+
         recurrenceinput: {
           test: /jquery\.recurrenceinput(.js)?$/,
           use: [
@@ -508,6 +515,7 @@ class PlonePlugin {
           this.rules.shim.bootstraptooltip,
           this.rules.shim.bootstraptransition,
           this.rules.shim.jqtree,
+          this.rules.shim.jqtreecontextmenu,
           this.rules.shim.jquerycookie,
           this.rules.shim.jqueryeventdrag,
           this.rules.shim.jqueryeventdrop,
@@ -580,6 +588,7 @@ class PlonePlugin {
           this.rules.shim.bootstraptooltip,
           this.rules.shim.bootstraptransition,
           this.rules.shim.jqtree,
+          this.rules.shim.jqtreecontextmenu,
           this.rules.shim.jquerycookie,
           this.rules.shim.jqueryeventdrag,
           this.rules.shim.jqueryeventdrop,
