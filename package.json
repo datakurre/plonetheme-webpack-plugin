@@ -2,7 +2,7 @@
   "name": "plonetheme-webpack-plugin",
   "description": "Webpack plugin for building Plone themes",
   "author": "Asko Soukka <asko.soukka@iki.fi>",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "dependencies": {
     "copy-webpack-plugin": "^4.0.1",
     "extend": "^3.0.1",
