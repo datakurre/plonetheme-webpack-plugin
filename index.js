@@ -91,8 +91,6 @@ class PlonePlugin {
       cachePath: path.join(process.cwd(), '.plone'),
       portalPath: url.parse(config.portalUrl).pathname,
       publicPath: '/Plone/++theme++webpack/',
-      momentLocales: [
-      ],
       resolveExtensions: [
         '',
         '.js'
@@ -104,7 +102,9 @@ class PlonePlugin {
         ? glob.sync(path.join(config.sourcePath, '**', '?(*.html|manifest.cfg)'))
         : []
     }, options, {
-      resolveMatches: []  // ensure empty before merge
+      // ensure empty before merge
+      momentLocales: [],
+      resolveMatches: []
     });
 
     config = this.config = merge(config, {
