@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.0.5 (2018-03-20)
+------------------
+
+- Fix broken issue with accidentally updated dependencies in 1.0.4
+  [datakurre]
+
+
 1.0.4 (2018-03-20)
 ------------------
 
