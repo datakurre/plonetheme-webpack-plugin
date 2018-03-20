@@ -1,17 +1,11 @@
 Changelog
 =========
 
-1.0.5 (2018-03-20)
+1.0.6 (2018-03-20)
 ------------------
 
-- Fix broken issue with accidentally updated dependencies in 1.0.4
-  [datakurre]
-
-
-1.0.4 (2018-03-20)
-------------------
-
-- Fix issue where babel-polyfill was not sorted before commons chunk
+- Fix to ensure that babel-polyfill is just after commons chunk to polyfill
+  Promise in time
   [datakurre]
 
 
