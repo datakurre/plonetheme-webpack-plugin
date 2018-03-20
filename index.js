@@ -475,7 +475,7 @@ class PlonePlugin {
               template: name,
               chunksSortMode: function(a, b) {
                 return (a.names[0].match(/^commons|^babel-polyfill/) &&
-                        b.names[0].match(/^commons|^babel-polyfill/)) ? a.names[0] > b.names[0]
+                        b.names[0].match(/^commons|^babel-polyfill/)) ? a.names[0] < b.names[0]
                   : a.names[0].match(/^commons|^babel-polyfill/) ? -1
                   : b.names[0].match(/^commons|^babel-polyfill/) ? 1
                   : a.names[0] > b.names[0] ? 1 : -1;
