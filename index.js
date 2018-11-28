@@ -1,4 +1,3 @@
-const assert = require('assert');
 const extend = require('extend');
 const fetch = require('sync-request');
 const fs = require('fs');
