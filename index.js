@@ -509,9 +509,9 @@ class PlonePlugin {
       module: {
         rules: [
           this.rules.url,
-          this.rules.css,
-          this.rules.less,
-          this.rules.scss,
+          this.rules.extract.css,
+          this.rules.extract.less,
+          this.rules.extract.scss,
           this.rules.shim.ace,
           this.rules.shim.backbone,
           this.rules.shim.bootstrapalert,
