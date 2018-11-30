@@ -146,7 +146,10 @@ class PlonePlugin {
         use: [
           {
             loader: 'url-loader',
-            options: { limit: 8192 }
+            options: { 
+              limit: 8192,
+              name: '[name].[hash].[ext]'
+            }
           }
         ]
       },
