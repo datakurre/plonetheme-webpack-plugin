@@ -70,7 +70,8 @@ class AddToContextPlugin {
  *     portalUrl: 'http://localhost:8080/' + SITENAME,
  *     publicPath: PUBLICPATH,
  *     sourcePath: PATHS.src,
- *     debug: true
+ *     debug: true,
+ *     hash: true,
  * });
  */
 class PlonePlugin {
@@ -82,6 +83,7 @@ class PlonePlugin {
 
     let config = this.config = extend({}, {
       debug: false,
+      hash: true,
       portalUrl: 'http://localhost:8080/Plone',
       sourcePath: null
     }, options);
@@ -146,9 +148,9 @@ class PlonePlugin {
         use: [
           {
             loader: 'url-loader',
-            options: { 
+            options: {
               limit: 8192,
-              name: '[name].[hash].[ext]'
+              name: this.config.hash ? '[name].[hash:7].[ext]': '[name].[ext]'
             }
           }
         ]
@@ -412,7 +414,7 @@ class PlonePlugin {
       hrm: new webpack.HotModuleReplacementPlugin(),
 
       extract: new ExtractTextPlugin({
-        filename: '[name].[chunkhash].css',
+        filename: this.config.hash ? '[name].[chunkhash:7].css' : '[name].css',
         allChunks: true
       }),
 
@@ -424,7 +426,7 @@ class PlonePlugin {
 
       commonschunk: new webpack.optimize.CommonsChunkPlugin({
         name: 'commons',
-        filename: 'commons.[chunkhash].js'
+        filename: this.config.hash ? 'commons.[chunkhash:7].js' : 'commons.js'
       }),
 
       // Plone defaults to moment built with locales
@@ -611,8 +613,8 @@ class PlonePlugin {
         ]
       },
       output: {
-        filename: '[name].[chunkhash].js',
-        chunkFilename: '[chunkhash].js',
+        filename: this.config.hash ? '[name].[chunkhash:7].js' : '[name].js',
+        chunkFilename: this.config.hash ? '[chunkhash:7].js' : '[name].bundle.js',
         publicPath: config.publicPath
       },
       plugins: [
