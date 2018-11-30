@@ -614,7 +614,7 @@ class PlonePlugin {
       },
       output: {
         filename: this.config.hash ? '[name].[chunkhash:7].js' : '[name].js',
-        chunkFilename: this.config.hash ? '[chunkhash:7].js' : '[name].bundle.js',
+        chunkFilename: this.config.hash ? '[name].bundle.[chunkhash:7].js' : '[name].bundle.js',
         publicPath: config.publicPath
       },
       plugins: [
