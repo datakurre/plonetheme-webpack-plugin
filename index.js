@@ -419,9 +419,10 @@ class PlonePlugin {
         'process.env.NODE_ENV': JSON.stringify('production')
       }),
 
-      commonschunk: new webpack.optimize.CommonsChunkPlugin(
-        'commons.' + (new Date()).getTime() + '.js'
-      ),
+      commonschunk: new webpack.optimize.CommonsChunkPlugin({
+        name: 'commons',
+        filename: 'commons.[chunkhash].js'
+      }),
 
       // Plone defaults to moment built with locales
       moment: config.momentLocales.length
