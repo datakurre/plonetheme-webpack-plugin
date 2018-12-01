@@ -548,7 +548,7 @@ class PlonePlugin {
       },
       output: {
         pathinfo: true,
-        filename: 'bundle.js',
+        filename: '[name].js',
         publicPath: config.publicPath
       },
       plugins: [
