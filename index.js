@@ -11,9 +11,11 @@ const vm = require('vm');
 const webpack = require('webpack');
 
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WriteFileWebpackPlugin = require('write-file-webpack-plugin');
+
+const PLUGIN_NAME = 'PlonePlugin';
 
 
 /**
@@ -25,7 +27,7 @@ class AddToContextPlugin {
   /**
    * @constructor
    * @param condition RegExp condition
-   * @param extras List of available modules modules
+   * @param extras list of available modules
    */
   constructor(condition, extras) {
     this.condition = condition;
@@ -40,14 +42,14 @@ class AddToContextPlugin {
     const condition = this.condition;
     const extras = this.extras;
     let newContext = false;
-    compiler.plugin('context-module-factory', (cmf) => {
-      cmf.plugin('after-resolve', (items, callback) => {
+    compiler.hooks.contextModuleFactory.tap(PLUGIN_NAME, (cmf) => {
+      cmf.hooks.afterResolve.tap(PLUGIN_NAME, (items) => {
         newContext = true;
-        return callback(null, items);
+        return items;
       });
       // this method is called for every path in the ctx
       // we just add our extras the first call
-      cmf.plugin('alternatives', (items, callback) => {
+      cmf.hooks.alternatives.tap(PLUGIN_NAME, (items) => {
         if (newContext && items[0].context.match(condition)) {
           newContext = false;
           const alternatives = extras.map((extra) => {
@@ -58,7 +60,7 @@ class AddToContextPlugin {
           });
           items.push.apply(items, alternatives);
         }
-        return callback(null, items);
+        return items;
       });
     });
   }
@@ -159,39 +161,32 @@ class PlonePlugin {
       extract: {
         css: {
           test: /\.css$/i,
-          use: ExtractTextPlugin.extract({
-            fallback: 'style-loader',
-            use: [
-              'css-loader'
-            ]
-          })
+          use: MiniCssExtractPlugin.loader
         },
         less: {
           test: /\.less$/i,
-          use: ExtractTextPlugin.extract({
-            fallback: 'style-loader',
-            use: [
-              {
-                loader: 'css-loader'
-              },
-              {
-                loader: 'less-loader',
-                options: {
-                  globalVars: config.variables
-                }
+          use: [
+            {
+              loader: MiniCssExtractPlugin.loader
+            },
+            {
+              loader: 'css-loader'
+            },
+            {
+              loader: 'less-loader',
+              options: {
+                globalVars: config.variables
               }
-            ]
-          })
+            }
+          ]
         },
         scss: {
           test: /\.scss$/i,
-          use: ExtractTextPlugin.extract({
-            fallback: 'style-loader',
-            use: [
-              'css-loader',
-              'fast-sass-loader'
-            ]
-          })
+          use: [
+            MiniCssExtractPlugin.loader,
+            'css-loader',
+            'fast-sass-loader'
+          ]
         },
       },
 
@@ -413,20 +408,27 @@ class PlonePlugin {
 
       hrm: new webpack.HotModuleReplacementPlugin(),
 
-      extract: new ExtractTextPlugin({
+      splitChunks: {
+        chunks: 'async',
+        minSize: 30000,
+        maxSize: 0,
+        minChunks: 1,
+        maxAsyncRequests: 5,
+        maxInitialRequests: 3,
+        automaticNameDelimiter: '~',
+        name: true,
+        cacheGroups: {
+          commons: {
+            name: 'commons',
+            chunks: 'initial',
+            minChunks: 1
+          },
+        }
+      },
+
+      extract: new MiniCssExtractPlugin({
         filename: this.config.hash ? '[name].[chunkhash:7].css' : '[name].css',
-        allChunks: true
-      }),
-
-      uglify: new webpack.optimize.UglifyJsPlugin(),
-
-      defineproduction: new webpack.DefinePlugin({
-        'process.env.NODE_ENV': JSON.stringify('production')
-      }),
-
-      commonschunk: new webpack.optimize.CommonsChunkPlugin({
-        name: 'commons',
-        filename: this.config.hash ? 'commons.[chunkhash:7].js' : 'commons.js'
+        chunkFilename: this.config.hash ? '[id].[chunkhash:7].css' : '[id].css'
       }),
 
       // Plone defaults to moment built with locales
@@ -479,10 +481,10 @@ class PlonePlugin {
               filename: name.substring(config.sourcePath.replace(/\/*$/, '/').length),
               template: name,
               chunksSortMode: function(a, b) {
-                return (a.names[0].match(/^commons|^babel-polyfill/) &&
-                        b.names[0].match(/^commons|^babel-polyfill/)) ? a.names[0] < b.names[0]
-                  : a.names[0].match(/^commons|^babel-polyfill/) ? -1
-                  : b.names[0].match(/^commons|^babel-polyfill/) ? 1
+                return (a.names[0].match(/^babel-polyfill/) &&
+                        b.names[0].match(/^babel-polyfill/)) ? a.names[0] < b.names[0]
+                  : a.names[0].match(/^babel-polyfill/) ? -1
+                  : b.names[0].match(/^babel-polyfill/) ? 1
                   : a.names[0] > b.names[0] ? 1 : -1;
               },
               inject: false
@@ -499,6 +501,7 @@ class PlonePlugin {
     });
 
     this.development = {
+      mode: 'development',
       devtool: 'eval',
       resolve: {
         alias: this.alias
@@ -509,6 +512,8 @@ class PlonePlugin {
         }
       },
       module: {
+        // structure pattern has dynamic requires
+        exprContextCritical: false,
         rules: [
           this.rules.url,
           this.rules.css,
@@ -572,6 +577,7 @@ class PlonePlugin {
     }
 
     this.production = {
+      mode: 'production',
       resolve: {
         alias: this.alias
       },
@@ -581,6 +587,7 @@ class PlonePlugin {
         }
       },
       module: {
+        // structure pattern has dynamic requires
         exprContextCritical: false,
         rules: [
           this.rules.url,
@@ -617,17 +624,17 @@ class PlonePlugin {
         chunkFilename: this.config.hash ? '[name].bundle.[chunkhash:7].js' : '[name].bundle.js',
         publicPath: config.publicPath
       },
+      optimization: {
+        splitChunks: this.plugins.splitChunks
+      },
       plugins: [
         this.plugins.brokenrelativeresource,
-        this.plugins.commonschunk,
-        this.plugins.defineproduction,
         this.plugins.extract,
         this.plugins.jqtree,
         this.plugins.moment,
         this.plugins.plone,
         this.plugins.structureaddtocontext,
         this.plugins.structurecontextreplacement,
-        this.plugins.uglify
       ]
     };
     if (config.sourcePath) {
@@ -723,10 +730,16 @@ class PlonePlugin {
       let extension = this.config.resolveExtensions[i];
       let response = fetch('GET', url_ + extension);
       if (response.statusCode === 200) {
-        let data = response.getBody();
         filename = filename + extension;
         mkdirp.sync(path.dirname(filename));
-        fs.writeFileSync(filename, data, { encoding: null });
+        if (filename.match(/\.less$/)) {
+          let data = response.getBody('utf-8');
+          data = data.replace(/@import\s+\(inline\)\s+/g, '@import ');
+          fs.writeFileSync(filename, data, { encoding: 'utf-8' });
+        } else {
+          let data = response.getBody();
+          fs.writeFileSync(filename, data, { encoding: null });
+        }
         if (this.config.debug) { console.log('Plone: ' + url_); }
         if (this.config.debug) { console.log('Saved: ' + filename); }
         return filename;
@@ -739,68 +752,74 @@ class PlonePlugin {
     const seen = [];
     const resolved = {};
 
-    compiler.plugin('compilation', function (compilation) {
+    compiler.hooks.compilation.tap(PLUGIN_NAME, function (compilation) {
 
       // Resolve files from Plone
-      compilation.resolvers.normal.plugin('file', function (data, callback) {
-        if (data.__plone) { return callback(); }
-
-        // Match against PlonePlugin resolveMatches
-        let match = self.match(data.path) || self.match(data.request);
-
-        // XXX: query.recurrenceinput.css, bundled with CMFPlone, references
-        // missing files next.gif, prev.gif and pb_close.png
-        if (['next.gif', 'prev.gif', 'pb_close.png']
-            .indexOf(path.basename(data.path)) >= 0) {
-          match = path.basename(data.path);
-          resolved[match] = path.join(__dirname, 'static', match);
-        }
-
-        // Download matches from Plone
-        if (match && !resolved[match]) {
-          if (seen.indexOf(data.path) === -1) {
-            seen.push(data.path);
-            resolved[match] = self.get(match);
+      compilation.resolverFactory.hooks.resolver.for('normal').tap(PLUGIN_NAME, function (resolver) {
+        resolver.hooks.file.tapAsync(PLUGIN_NAME, function(data, resolveContext, callback) {
+          if (data.__plone) {
+            return callback();
           }
-        }
 
-        // Report downloads resolved
-        if (match && resolved[match]) {
-          return this.doResolve('resolved', extend(data, {
-            path: resolved[match],
-            __plone: true
-          }), 'Plone:' + match, callback, true);
-        }
+          // Match against PlonePlugin resolveMatches
+          let match = self.match(data.path) || self.match(data.request);
 
-        // Fallback to default resolvers
-        return callback();
+          // XXX: query.recurrenceinput.css, bundled with CMFPlone, references
+          // missing files next.gif, prev.gif and pb_close.png
+          if (['next.gif', 'prev.gif', 'pb_close.png']
+            .indexOf(path.basename(data.path)) >= 0) {
+            match = path.basename(data.path);
+            resolved[match] = path.join(__dirname, 'static', match);
+          }
+
+          // Download matches from Plone
+          if (match && !resolved[match]) {
+            if (seen.indexOf(data.path) === -1) {
+              seen.push(data.path);
+              resolved[match] = self.get(match);
+            }
+          }
+
+          // Report downloads resolved
+          if (match && resolved[match]) {
+            return resolver.doResolve(resolver.hooks.resolved, extend(data, {
+              path: resolved[match],
+              __plone: true
+            }), 'Plone:' + match, resolveContext, callback, true);
+          }
+
+          return callback()
+        });
       });
 
       // Resolve JS modules from Plone
-      compiler.resolvers.normal.plugin('module', function(data, callback) {
-        if (data.__plone) { return callback(); }
-
-        // Match against PlonePlugin resolveMatches
-        let match = self.match(data.request);
-
-        // Download matches from Plone
-        if (match && !resolved[match]) {
-          if (seen.indexOf(data.path) === -1) {
-            seen.push(data.path);
-            resolved[match] = self.get(match);
+      compilation.resolverFactory.hooks.resolver.for('normal').tap(PLUGIN_NAME, function (resolver) {
+        resolver.hooks.module.tapAsync(PLUGIN_NAME, function(data, resolveContext, callback) {
+          if (data.__plone) {
+            return callback();
           }
-        }
 
-        // Report downloads resolved
-        if (match && resolved[match]) {
-          return this.doResolve('resolved', extend(data, {
-            path: resolved[match],
-            __plone: true
-          }), 'Plone:' + match, callback, true);
-        }
+          // Match against PlonePlugin resolveMatches
+          let match = self.match(data.request);
 
-        // Fallback to default resolvers
-        return callback();
+          // Download matches from Plone
+          if (match && !resolved[match]) {
+            if (seen.indexOf(data.path) === -1) {
+              seen.push(data.path);
+              resolved[match] = self.get(match);
+            }
+          }
+
+          // Report downloads resolved
+          if (match && resolved[match]) {
+            return resolver.doResolve('resolved', extend(data, {
+              path: resolved[match],
+              __plone: true
+            }), 'Plone:' + match, callback, true);
+          }
+
+          return callback();
+        });
       });
     });
   }
