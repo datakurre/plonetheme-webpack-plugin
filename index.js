@@ -371,7 +371,7 @@ class PlonePlugin {
         },
 
         jquerytools: {
-          test: /jquery\.tools\.overlay(.js)?$/,
+          test: /jquery\.tools\.(overlay|dateinput)(.js)?$/,
           use: [
             'imports-loader?jQuery=jquery,$=jquery',
             'exports-loader?$.tabs'
