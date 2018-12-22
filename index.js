@@ -13,6 +13,7 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
 const WriteFileWebpackPlugin = require('write-file-webpack-plugin');
 
 const PLUGIN_NAME = 'PlonePlugin';
@@ -382,6 +383,8 @@ class PlonePlugin {
 
       hrm: new webpack.HotModuleReplacementPlugin(),
 
+      optimize: new OptimizeCSSAssetsPlugin({}),
+
       extract: new MiniCssExtractPlugin({
         filename: this.config.hash ? '[name].[chunkhash:7].css' : '[name].css',
         chunkFilename: this.config.hash ? '[id].[chunkhash:7].css' : '[id].css',
@@ -588,6 +591,7 @@ class PlonePlugin {
         this.plugins.plone,
         this.plugins.structureaddtocontext,
         this.plugins.structurecontextreplacement,
+        this.plugins.optimize,
       ],
     };
     if (config.sourcePath) {
