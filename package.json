@@ -12,6 +12,7 @@
     "mkdirp": "^0.5.1n",
     "optimize-css-assets-webpack-plugin": "^5.0.1",
     "sync-request": "^6.0.0",
+    "uglifyjs-webpack-plugin": "^2.1.0",
     "webpack": "^4.27.0",
     "webpack-merge": "^4.1.4",
     "write-file-webpack-plugin": "^4.5.0"

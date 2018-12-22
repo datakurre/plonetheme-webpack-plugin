@@ -13,7 +13,8 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const WriteFileWebpackPlugin = require('write-file-webpack-plugin');
 
 const PLUGIN_NAME = 'PlonePlugin';
@@ -383,6 +384,12 @@ class PlonePlugin {
 
       hrm: new webpack.HotModuleReplacementPlugin(),
 
+      uglify: new UglifyJsPlugin({
+        cache: true,
+        parallel: true,
+        sourceMap: false,
+      }),
+
       optimize: new OptimizeCSSAssetsPlugin({}),
 
       extract: new MiniCssExtractPlugin({
@@ -591,8 +598,13 @@ class PlonePlugin {
         this.plugins.plone,
         this.plugins.structureaddtocontext,
         this.plugins.structurecontextreplacement,
-        this.plugins.optimize,
       ],
+      optimization: {
+        minimizer: [
+          this.plugins.uglify,
+          this.plugins.optimize,
+        ]
+      }
     };
     if (config.sourcePath) {
       this.production.plugins = this.production.plugins.concat(
