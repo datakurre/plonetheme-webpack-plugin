@@ -1,25 +1,25 @@
 Plone Webpack Plugin
 ====================
 
-**plonetheme-webpack-plugin** provides a Webpack (2.x) plugin and
+**plonetheme-webpack-plugin** provides a Webpack (4.x) plugin and
 presets for building completely Webpack managed themes for
 [Plone 5](https://plone.com/), using the resources shipped with a Plone
 release.
 
-Please, see
-[plonethemewwebpacktemplate](https://github.com/collective/plonetheme.webpacktemplate)
-for an example of use.
+While this plugin can be used to build any kind of bundles with webpack,
+due to the lack of documentation, this best used with
+[plonetheme.webpacktemplate](https://github.com/collective/plonetheme.webpacktemplate).
 
 In short, this package makes it possible to build Plone-themes with
 Webpack so that all possible frontend resources are managed by Webpack
 and are built from the package versions shipped with Plone.
 
-This plugin requires a running Plone site while executing the build (or
-webpack-dev-server) and does several things, which can be explained best
-with the following minimal `webpack.config.js`.
+This plugin requires a running Plone site while executing the initial build (or
+webpack-dev-server) and does several things, which can be explained best with
+the following minimal `webpack.config.js`. After the initial build, the plugin
+can rely on its cache persisted at `./plone` of the current working directory.
 
 ``` {.sourceCode .javascript}
-const webpack = require('webpack');
 const path = require('path');
 const merge = require('webpack-merge');
 
@@ -36,19 +36,21 @@ const PATHS = {
 
 const PLONE = new PlonePlugin({
   portalUrl: 'http://localhost:8080/' + SITENAME,
-  momentLocales: ['fi', 'ca'],
   publicPath: PUBLICPATH,
   sourcePath: PATHS.src,
+  momentLocales: ['ca', 'fi'],
   debug: false
 });
 
 const common = {
   entry: {
    'default': path.join(PATHS.src, 'default'),
-   'logged-in': path.join(PATHS.src, 'logged-in')
   },
   output: {
     path: PATHS.build
+  },
+  resolve: {
+    extensions: ['.js', '.json'],
   },
   module: {
     rules: [
@@ -57,7 +59,14 @@ const common = {
         use: [
           {
             loader: 'babel-loader',
-            options: { cacheDirectory: true }
+            options: {
+              babelrc: false,
+              comments: true,
+              cacheDirectory: true,
+              plugins: [
+                '@babel/syntax-dynamic-import'
+              ]
+            }
           }
         ],
         include: PATHS.src
@@ -74,8 +83,7 @@ switch(path.basename(process.argv[1])) {
   case 'webpack-dev-server':
     module.exports = merge(PLONE.development, common, {
       entry: [
-        path.join(PATHS.src, 'default'),
-        path.join(PATHS.src, 'logged-in')
+        path.join(PATHS.src, 'default')
       ]
     });
     break;
@@ -94,10 +102,10 @@ if (PLONE.config.debug) {
     LESS configuration from Plone and prepares mergeable Webpack presets
     into the plugin instance. The presets already include the plugin
     itself.
-3.  A common Webpack configuration is defined with the bundles to build.
+3.  A common Webpack configuration is defined with the bundle to build.
     Please, see
     [plonetheme.webpacktemplate](https://github.com/collective/plonetheme.webpacktemplate)
-    for example bundles and example theme mockups (where final bundles
+    for example bundle and example theme mockups (where all final bundles
     get injected).
 4.  Finally, PlonePlugin-presets for production and development
     are merged with the custom configuration (which may also override
@@ -105,7 +113,5 @@ if (PLONE.config.debug) {
 
 See the plugin sources for the preset details.
 
-Note that version 0.14.5 of css-loader is recommended with Plone,
-because of [performance
-issues](https://github.com/webpack/css-loader/issues/124) with the newer
-versions.
+Versions in 0.x series of this plugin were compatible with Webpack 1.x.
+Versions in 1.x series of this plugin were compatible with Webpack 2.x.

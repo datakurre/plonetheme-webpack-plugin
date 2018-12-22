@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.0 (2018-12-22)
+------------------
+
+- First Webpack 4 compatible release
+  [datakurre]
+
+
 1.0.6 (2018-03-20)
 ------------------
 
