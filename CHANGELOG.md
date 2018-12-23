@@ -1,6 +1,14 @@
 Changelog
 =========
 
+2.0.1 (2018-12-23)
+------------------
+
+- Add disableHostCheck: true for devServer defaults to workaround a current
+  webpack-dev-server issue
+  [datakurre]
+
+
 2.0.0 (2018-12-22)
 ------------------
 
