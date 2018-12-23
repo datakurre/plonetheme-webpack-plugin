@@ -517,6 +517,8 @@ class PlonePlugin {
         stats: 'errors-only',
         host: 'localhost',
         port: '9000',
+        // https://github.com/webpack/webpack-dev-server/issues/1604
+        disableHostCheck: true,
       },
       output: {
         pathinfo: true,
