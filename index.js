@@ -405,6 +405,12 @@ class PlonePlugin {
           )
         : new webpack.IgnorePlugin(/^\.[\\/]locale$/, /moment$/),
 
+      // Fix dynamic requires in moment pattern
+      // https://github.com/plone/mockup/commit/9da8b4187c3829877689f4c06451e5b2700a5858#diff-5ccd3d383e16f4be79264a615058325a
+      momentcontextreplacement: new webpack.ContextReplacementPlugin(
+        /^moment-url$/, '../../++plone++static/components/moment/locale',
+      ),
+
       jqtree: new webpack.NormalModuleReplacementPlugin(
         /^\.[\\/]jqtree-circle\.png$/,
         ob => {
@@ -530,6 +536,7 @@ class PlonePlugin {
         this.plugins.hrm,
         this.plugins.jqtree,
         this.plugins.moment,
+        this.plugins.momentcontextreplacement,
         this.plugins.plone,
         this.plugins.structureaddtocontext,
         this.plugins.structurecontextreplacement,
@@ -597,6 +604,7 @@ class PlonePlugin {
         this.plugins.extract,
         this.plugins.jqtree,
         this.plugins.moment,
+        this.plugins.momentcontextreplacement,
         this.plugins.plone,
         this.plugins.structureaddtocontext,
         this.plugins.structurecontextreplacement,
