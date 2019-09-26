@@ -240,7 +240,7 @@ class PlonePlugin {
         ace: {
           test: /mockup[\\/]texteditor[\\/]pattern(.js)?$/,
           use: [
-            'imports-loader?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini',
+            'imports-loader?ace=ace,_a=ace/mode/javascript,_b=ace/mode/text,_c=ace/mode/css,_d=ace/mode/html,_e=ace/mode/xml,_f=ace/mode/less,_g=ace/mode/python,_h=ace/mode/xml,_i=ace/mode/ini,_j=ace/theme/monokai',
           ],
         },
 
