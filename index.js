@@ -14,7 +14,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const TerserWebpackPlugin = require('terser-webpack-plugin');
 const WriteFileWebpackPlugin = require('write-file-webpack-plugin');
 
 const PLUGIN_NAME = 'PlonePlugin';
@@ -391,11 +391,7 @@ class PlonePlugin {
 
       hrm: new webpack.HotModuleReplacementPlugin(),
 
-      uglify: new UglifyJsPlugin({
-        cache: true,
-        parallel: true,
-        sourceMap: false,
-      }),
+      uglify: new TerserWebpackPlugin({}),
 
       optimize: new OptimizeCSSAssetsPlugin({}),
 
