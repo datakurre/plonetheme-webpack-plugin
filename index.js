@@ -180,7 +180,14 @@ class PlonePlugin {
       extract: {
         css: {
           test: /\.css$/i,
-          use: MiniCssExtractPlugin.loader,
+          use: [
+            {
+              loader: MiniCssExtractPlugin.loader,
+            },
+            {
+              loader: 'css-loader',
+            },
+          ],
         },
         less: {
           test: /\.less$/i,
