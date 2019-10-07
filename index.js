@@ -208,7 +208,7 @@ class PlonePlugin {
         },
         scss: {
           test: /\.scss$/i,
-          use: [MiniCssExtractPlugin.loader, 'css-loader', 'fast-sass-loader'],
+          use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
         },
       },
 
@@ -240,7 +240,7 @@ class PlonePlugin {
 
       scss: {
         test: /\.scss$/i,
-        use: ['style-loader', 'css-loader?sourceMap', 'fast-sass-loader'],
+        use: ['style-loader', 'css-loader?sourceMap', 'sass-loader'],
       },
 
       shim: {
